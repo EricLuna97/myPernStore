@@ -10,3 +10,21 @@ export const getProducts = async () => {
     throw error;
   }
 }; 
+
+export const createProduct = async (productoNuevo) => {
+  try {
+    const response = await fetch(`${API_URL}/productos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', 
+      },
+      body: JSON.stringify(productoNuevo), 
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error creating product:', error);
+    throw error;
+  }
+};
