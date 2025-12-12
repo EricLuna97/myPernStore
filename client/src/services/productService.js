@@ -11,15 +11,12 @@ export const getProducts = async () => {
   }
 }; 
 
-export const createProduct = async (productoNuevo) => {
-  try {
-    const response = await fetch(`${API_URL}/productos`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json', 
-      },
-      body: JSON.stringify(productoNuevo), 
-    });
+export const createProduct = async (formData) => {
+    try {
+        const response = await fetch(`${API_URL}/productos`, {
+            method: 'POST',
+            body: formData,
+        });
     
     const data = await response.json();
     return data;
