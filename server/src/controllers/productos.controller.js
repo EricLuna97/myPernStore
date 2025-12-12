@@ -13,17 +13,15 @@ const getAllProductos = async (req, res) => {
   }
 };
 
-module.exports = {
-  getAllProductos
-};
-
 const createProducto = async (req, res) => {
   const { nombre, precio, stock, categoria_id } = req.body;
+  const imagenFilename = req.file ? req.file.filename : null;
+  const imagen_url = imagenFilename ? 'http://localhost:3000/uploads/' + imagenFilename : null;
 
   try {
     const result = await pool.query(
-      'INSERT INTO productos (nombre, precio, stock, categoria_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nombre, precio, stock, categoria_id]
+      'INSERT INTO productos (nombre, precio, stock, categoria_id, imagen_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [nombre, precio, stock, categoria_id, imagen_url]
     );
 
     res.json(result.rows[0]);
@@ -33,7 +31,23 @@ const createProducto = async (req, res) => {
   }
 };
 
+const deleteProducto = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM productos WHERE id = $1 RETURNING *', [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    res.json({ message: "Producto eliminado correctamente" });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ error: "Error al eliminar producto" });
+  }
+};
+
 module.exports = {
   getAllProductos,
-  createProducto 
+  createProducto,
+  deleteProducto
 };

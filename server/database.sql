@@ -11,6 +11,7 @@ CREATE TABLE productos (
     descripcion TEXT,
     precio NUMERIC(10, 2) NOT NULL,
     stock INTEGER DEFAULT 0,
+    imagen_url TEXT,
     categoria_id INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
