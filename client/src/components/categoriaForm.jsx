@@ -37,11 +37,16 @@ function CategoriaForm() {
 
 const styles = {
   form: {
+    maxWidth: '500px',        /* 1. Limitamos el ancho (para que no ocupe toda la pantalla) */
+    margin: '0 auto 20px auto', /* 2. Centramos la caja horizontalmente */
     padding: '20px',
     background: '#f8f9fa',
     borderRadius: '8px',
-    marginBottom: '20px',
-    border: '1px solid #dee2e6'
+    border: '1px solid #dee2e6',
+    display: 'flex',          /* 3. Flexbox para organizar el contenido interno */
+    flexDirection: 'column',  /* Elementos en columna (título arriba, inputs abajo) */
+    alignItems: 'center',     /* Centramos el título y los inputs dentro de la caja */
+    gap: '10px'               /* Espacio entre el título y los campos */
   },
   btn: {
     padding: '8px 15px',
@@ -49,7 +54,8 @@ const styles = {
     color: 'white',
     border: 'none',
     borderRadius: '4px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    fontWeight: 'bold'
   }
 };
 

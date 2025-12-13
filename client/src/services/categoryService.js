@@ -14,3 +14,13 @@ export const createCategory = async (nombre) => {
     throw error;
   }
 };
+export const getCategories = async () => {
+  try {
+    const response = await fetch(`${API_URL}/categorias`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    throw error;
+  }
+};
