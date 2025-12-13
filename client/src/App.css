@@ -96,3 +96,43 @@ h3 {
     padding: 1rem; 
   }
 }
+
+.acciones-container {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 20px;
+  flex-wrap: wrap; /* Para que baje en celulares */
+}
+
+.buscador-input {
+  flex: 1; 
+  max-width: 400px;
+  padding: 12px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 25px; 
+  outline: none;
+  transition: box-shadow 0.3s;
+}
+
+.buscador-input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+}
+
+.btn-agregar {
+  padding: 12px 25px;
+  font-size: 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn-agregar:hover {
+  background-color: #2980b9;
+}

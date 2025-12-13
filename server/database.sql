@@ -16,13 +16,3 @@ CREATE TABLE productos (
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Vamos a insertar unos datos de prueba (Seed data) para no empezar vacíos
-INSERT INTO categorias (nombre) VALUES 
-    ('Electrónica'), 
-    ('Ropa'), 
-    ('Hogar');
-
-INSERT INTO productos (nombre, precio, stock, categoria_id) VALUES 
-    ('Laptop Gamer', 1200.50, 5, 1),
-    ('Camiseta React', 25.00, 100, 2),
-    ('Cafetera', 45.99, 20, 3);
