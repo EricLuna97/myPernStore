@@ -1,5 +1,5 @@
 .mi-formulario {
-    background: white;
+    background: #06b6d4;
     padding: 20px;
     margin: 20px auto;
     max-width: 400px;
@@ -17,7 +17,7 @@
 }
 
 .mi-formulario button {
-    background-color: #3498db;
+    background-color: #0c2caeff;
     color: white;
     border: none;
     padding: 10px;

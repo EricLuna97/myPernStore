@@ -38,7 +38,23 @@ function Home() {
 
   return (
     <div className="app-container">
-      <h1>Mi Tienda PERN 🛍️</h1>
+
+      {/* --- HERO SECTION --- */}
+<div style={{
+  backgroundColor: 'var(--bg-card)', 
+  padding: '40px', 
+  borderRadius: '16px', 
+  marginBottom: '40px',
+  backgroundImage: 'linear-gradient(45deg, var(--bg-card) 30%, rgba(6, 182, 212, 0.1) 100%)',
+  border: '1px solid rgba(255,255,255,0.1)'
+}}>
+  <h2 style={{ fontSize: '2.5rem', margin: '0 0 10px 0', color: 'var(--accent-color)' }}>
+    Mi Tienda PERN 🛍️
+  </h2>
+  <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
+    Encuentra los mejores componentes al mejor precio.
+  </p>
+</div>
       
       <div className="acciones-container">
         

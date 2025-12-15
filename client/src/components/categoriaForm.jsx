@@ -40,7 +40,7 @@ const styles = {
     maxWidth: '500px',        /* 1. Limitamos el ancho (para que no ocupe toda la pantalla) */
     margin: '0 auto 20px auto', /* 2. Centramos la caja horizontalmente */
     padding: '20px',
-    background: '#f8f9fa',
+    background: '#06b6d4',
     borderRadius: '8px',
     border: '1px solid #dee2e6',
     display: 'flex',          /* 3. Flexbox para organizar el contenido interno */
@@ -50,7 +50,7 @@ const styles = {
   },
   btn: {
     padding: '8px 15px',
-    background: '#28a745',
+    background: '#0c2caeff',
     color: 'white',
     border: 'none',
     borderRadius: '4px',

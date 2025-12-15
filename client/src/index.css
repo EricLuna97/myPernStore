@@ -1,10 +1,18 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* PALETA DE COLORES TECH */
+  --bg-main: #0f172a;       /* Fondo muy oscuro (casi negro) */
+  --bg-card: #1e293b;       /* Fondo de las tarjetas (gris azulado oscuro) */
+  --text-primary: #f8fafc;  /* Texto blanco */
+  --text-secondary: #94a3b8;/* Texto gris claro */
+  --accent-color: #06b6d4;  /* Cian Neón (para botones y bordes) */
+  --accent-hover: #0891b2;  /* Cian más oscuro para hover */
+  --danger-color: #ef4444;  /* Rojo para eliminar */
+  
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
-  background-color: #ffffff; /* Fondo blanco limpio */
-  color: #213547;
+  
+  color-scheme: dark; 
 }
 
 body {
@@ -12,5 +20,21 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  display: block; /* IMPORTANTE: Quitamos el 'flex' que trae por defecto */
+  background-color: var(--bg-main); 
+  color: var(--text-primary);
+}
+
+/* Scrollbar personalizado (tipo hacker) */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-card);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
 }
