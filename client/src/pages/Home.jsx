@@ -39,21 +39,26 @@ function Home() {
   return (
     <div className="app-container">
 
-      {/* --- HERO SECTION --- */}
+    {/* --- HERO SECTION (ADMINISTRACIÓN) --- */ }
 <div style={{
-  backgroundColor: 'var(--bg-card)', 
-  padding: '40px', 
-  borderRadius: '16px', 
+  backgroundColor: 'var(--bg-card)',
+  padding: '30px',
+  borderRadius: '16px',
   marginBottom: '40px',
-  backgroundImage: 'linear-gradient(45deg, var(--bg-card) 30%, rgba(6, 182, 212, 0.1) 100%)',
-  border: '1px solid rgba(255,255,255,0.1)'
+  borderLeft: '5px solid var(--accent-color)', /* Borde lateral tipo Dashboard */
+  textAlign: 'left', /* Alineado a la izquierda, más serio */
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center'
 }}>
-  <h2 style={{ fontSize: '2.5rem', margin: '0 0 10px 0', color: 'var(--accent-color)' }}>
-    Mi Tienda PERN 🛍️
-  </h2>
-  <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
-    Encuentra los mejores componentes al mejor precio.
-  </p>
+  <div>
+    <h2 style={{ fontSize: '2rem', margin: '0 0 5px 0', color: 'var(--accent-color)' }}>
+      PANEL DE INVENTARIO 📦
+    </h2>
+    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>
+      Administra tus productos y categorías desde aquí.
+    </p>
+  </div>
 </div>
       
       <div className="acciones-container">
