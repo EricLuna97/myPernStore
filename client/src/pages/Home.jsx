@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProducts, deleteProduct } from '../services/productService';
 import '../App.css'; 
+import { useNavigate } from 'react-router-dom';
 
 function Home() {
+  const navigate = useNavigate();  
+
   const [productos, setProductos] = useState([]);
   
   const [busqueda, setBusqueda] = useState("");
@@ -101,12 +104,21 @@ function Home() {
             <p className="precio">${producto.precio}</p>
             <p>Stock: {producto.stock}</p>
             
-            <button 
-              className="btn-eliminar" 
-              onClick={() => handleEliminar(producto.id)}
-            >
-              🗑️ Eliminar
-            </button>
+            <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: 'auto' }}>
+              <button 
+                style={{ flex: 1, background: '#f1c40f', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                onClick={() => navigate('/cargar', { state: { productoEditar: producto } })}
+              >
+                 Editar
+              </button>
+              <button 
+                className="btn-eliminar" 
+                style={{ flex: 1 }}
+                onClick={() => handleEliminar(producto.id)}
+              >
+                 Eliminar
+              </button>
+            </div>
           </div>
         ))}
         {productosFiltrados.length === 0 && (

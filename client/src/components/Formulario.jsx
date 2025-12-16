@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react'; 
-import { createProduct } from '../services/productService';
-import { getCategories } from '../services/categoryService'; 
+import { useState, useEffect } from 'react';
+import { createProduct, updateProduct } from '../services/productService';
+import { getCategories } from '../services/categoryService';
 import './Formulario.css';
 
-function Formulario({ alCrear }) {
+function Formulario({ alCrear, productoExistente }) {
   const [archivo, setArchivo] = useState(null);
-  
   const [listaCategorias, setListaCategorias] = useState([]);
-
+  
   const [datos, setDatos] = useState({
     nombre: '',
     precio: '',
@@ -16,16 +15,21 @@ function Formulario({ alCrear }) {
   });
 
   useEffect(() => {
-    const cargarCategorias = async () => {
-      try {
-        const data = await getCategories();
-        setListaCategorias(data);
-      } catch (error) {
-        console.error("Error cargando categorías");
+    const cargarTodo = async () => {
+      const cats = await getCategories();
+      setListaCategorias(cats);
+
+      if (productoExistente) {
+        setDatos({
+          nombre: productoExistente.nombre,
+          precio: productoExistente.precio,
+          stock: productoExistente.stock,
+          categoria_id: productoExistente.categoria_id || '' 
+        });
       }
     };
-    cargarCategorias();
-  }, []);
+    cargarTodo();
+  }, [productoExistente]);
 
   const handleChange = (e) => {
     setDatos({ ...datos, [e.target.name]: e.target.value });
@@ -37,7 +41,7 @@ function Formulario({ alCrear }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     if (!datos.categoria_id) {
       alert("Por favor selecciona una categoría");
       return;
@@ -48,19 +52,19 @@ function Formulario({ alCrear }) {
     formData.append('precio', datos.precio);
     formData.append('stock', datos.stock);
     formData.append('categoria_id', datos.categoria_id);
-    
     if (archivo) formData.append('imagen', archivo);
 
     try {
-      await createProduct(formData);
-      alert('Producto creado con éxito!');
+      if (productoExistente) {
+        await updateProduct(productoExistente.id, formData);
+        alert('Producto actualizado correctamente ✅');
+      } else {
+        await createProduct(formData);
+        alert('Producto creado correctamente ✅');
+      }
       
-      setDatos({ nombre: '', precio: '', stock: '', categoria_id: '' });
-      setArchivo(null); 
-      const fileInput = document.getElementById('input-file');
-      if(fileInput) fileInput.value = "";
+      if (alCrear) alCrear(); 
       
-      if (alCrear) alCrear();
     } catch (error) {
       console.error(error);
       alert('Hubo un error al guardar');
@@ -69,11 +73,36 @@ function Formulario({ alCrear }) {
 
   return (
     <form className="mi-formulario" onSubmit={handleSubmit}>
-      <h2>Cargar Producto</h2>
+      <h2>
+        {productoExistente ? `Editar: ${productoExistente.nombre}` : 'Nuevo Producto'}
+      </h2>
       
-      <input type="text" name="nombre" placeholder="Nombre" value={datos.nombre} onChange={handleChange} required />
-      <input type="number" name="precio" placeholder="Precio" value={datos.precio} onChange={handleChange} required />
-      <input type="number" name="stock" placeholder="Stock" value={datos.stock} onChange={handleChange} required />
+      <label>Nombre del Producto:</label>
+      <input 
+        type="text" 
+        name="nombre" 
+        value={datos.nombre} 
+        onChange={handleChange} 
+        required 
+      />
+      
+      <label>Precio ($):</label>
+      <input 
+        type="number" 
+        name="precio" 
+        value={datos.precio} 
+        onChange={handleChange} 
+        required 
+      />
+      
+      <label>Stock Disponible:</label>
+      <input 
+        type="number" 
+        name="stock" 
+        value={datos.stock} 
+        onChange={handleChange} 
+        required 
+      />
       
       <label>Categoría:</label>
       <select 
@@ -81,21 +110,22 @@ function Formulario({ alCrear }) {
         value={datos.categoria_id} 
         onChange={handleChange} 
         required
-        style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
       >
-        <option value="">-- Selecciona una opción --</option>
-        
+        <option value="">-- Selecciona --</option>
         {listaCategorias.map((cat) => (
-          <option key={cat.id} value={cat.id}>
-            {cat.nombre}
-          </option>
+          <option key={cat.id} value={cat.id}>{cat.nombre}</option>
         ))}
       </select>
 
-      <label>Imagen:</label>
-      <input id="input-file" type="file" name="imagen" onChange={handleFileChange} accept="image/*" />
+      <label>
+        Imagen: 
+        {productoExistente && <span style={{fontSize:'0.8rem', marginLeft:'10px'}}>(Deja vacío para mantener la actual)</span>}
+      </label>
+      <input type="file" onChange={handleFileChange} accept="image/*" />
 
-      <button type="submit">Guardar</button>
+      <button type="submit">
+        {productoExistente ? '💾 Guardar Cambios' : '➕ Crear Producto'}
+      </button>
     </form>
   );
 }

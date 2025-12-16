@@ -1,9 +1,11 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Formulario from '../components/Formulario';
 import CategoriaForm from '../components/categoriaForm';
 
 function Cargar() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
+  const location = useLocation();
+  const productoAEditar = location.state?.productoEditar; 
 
   const alTerminar = () => {
     // Redirigir al usuario al inicio ('/')
@@ -22,7 +24,8 @@ function Cargar() {
 
       <hr style={{ margin: '30px 0', border: '0', borderTop: '1px solid #ccc' }} />
 
-      <Formulario alCrear={alTerminar} />
+      <Formulario alCrear={alTerminar}
+      productoExistente={productoAEditar} />
     </div>
   );
 }

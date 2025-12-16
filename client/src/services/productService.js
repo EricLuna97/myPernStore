@@ -35,3 +35,22 @@ export const deleteProduct = async (id) => {
     throw error;
   }
 };
+
+export const updateProduct = async (id, formData) => {
+  try {
+    
+    const response = await fetch(`${API_URL}/productos/${id}`, {
+      method: 'PUT',
+      body: formData, 
+    });
+    
+    if (!response.ok) throw new Error('Error al actualizar');
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error updating product:', error);
+    throw error;
+  }
+};
+
