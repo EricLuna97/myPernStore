@@ -2,16 +2,15 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Cargar from './pages/Cargar';
 import './App.css';
+import Login from './pages/Login';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta principal: Muestra el Home */}
         <Route path="/" element={<Home />} />
-        
-        {/* Ruta de carga: Muestra la página Cargar */}
         <Route path="/cargar" element={<Cargar />} />
+        <Route path="/login" element={<Login />} />
       </Routes>
     </BrowserRouter>
   );
