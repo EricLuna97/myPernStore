@@ -22,7 +22,7 @@ function Login() {
       if (response.ok) {
         localStorage.setItem('token', data.token);
         alert("¡Bienvenido al sistema! 🔓");
-        navigate('/cargar'); 
+        navigate('/'); 
       } else {
         alert("Error: " + data.message);
       }
