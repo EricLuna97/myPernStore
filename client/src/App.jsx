@@ -3,13 +3,14 @@ import Home from './pages/Home';
 import Cargar from './pages/Cargar';
 import './App.css';
 import Login from './pages/Login';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/cargar" element={<Cargar />} />
+        <Route path="/cargar" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
       </Routes>
     </BrowserRouter>
