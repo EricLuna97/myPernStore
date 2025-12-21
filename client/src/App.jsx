@@ -13,8 +13,22 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/cargar" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
+        <Route path="/cargar" 
+        element={
+        <ProtectedRoute>
+          <Cargar />
+          </ProtectedRoute>
+        }
+      />
         <Route path="/login" element={<Login />} />
+        <Route 
+  path="/editar/:id" 
+  element={
+    <ProtectedRoute>
+      <Cargar />
+    </ProtectedRoute>
+  } 
+/>
       </Routes>
     </BrowserRouter>
   );  

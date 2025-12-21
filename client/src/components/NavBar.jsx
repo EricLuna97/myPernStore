@@ -19,7 +19,7 @@ function Navbar() {
   return (
     <nav className="navbar">
       <div className="navbar-logo">
-        <Link to="/">CYBERSTORE </Link>
+        <Link to="/">PERNSTORE </Link>
       </div>
       
       <ul className="navbar-links">

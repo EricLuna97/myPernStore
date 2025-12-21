@@ -12,12 +12,18 @@ export const getProducts = async () => {
   return data;
 };
 
+export const getProductById = async (id) => {
+  const response = await fetch(`${API_URL}/productos/${id}`);
+  if (!response.ok) throw new Error('Error al obtener producto');
+  return await response.json();
+};
+
 export const createProduct = async (formData) => {
   const token = getToken();
   const response = await fetch(`${API_URL}/productos`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}` // <--- Aquí mostramos el pase VIP
+      'Authorization': `Bearer ${token}` 
     },
     body: formData,
   });
@@ -53,5 +59,28 @@ export const updateProduct = async (id, formData) => {
   });
   
   if (!response.ok) throw new Error('Error al actualizar');
+  return await response.json();
+};
+
+// Obtener lista de categorías
+export const getCategories = async () => {
+  const response = await fetch(`${API_URL}/categorias`); 
+  if (!response.ok) throw new Error('Error al obtener categorías');
+  return await response.json();
+};
+
+// Crear nueva categoría
+export const createCategory = async (nombre) => {
+  const token = getToken(); // Usamos la función auxiliar aquí también
+  const response = await fetch(`${API_URL}/categorias`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ nombre })
+  });
+  
+  if (!response.ok) throw new Error('Error al crear categoría');
   return await response.json();
 };

@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getProducts, deleteProduct } from '../services/productService';
 import '../App.css'; 
-import { useNavigate } from 'react-router-dom';
 
 function Home() {
   const navigate = useNavigate();  
 
   const [productos, setProductos] = useState([]);
-  
   const [busqueda, setBusqueda] = useState("");
 
   const cargarProductos = async () => {
@@ -42,30 +40,28 @@ function Home() {
   return (
     <div className="app-container">
 
-    {/* --- HERO SECTION (ADMINISTRACIÓN) --- */ }
-<div style={{
-  backgroundColor: 'var(--bg-card)',
-  padding: '30px',
-  borderRadius: '16px',
-  marginBottom: '40px',
-  borderLeft: '5px solid var(--accent-color)', /* Borde lateral tipo Dashboard */
-  textAlign: 'left', /* Alineado a la izquierda, más serio */
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
-}}>
-  <div>
-    <h2 style={{ fontSize: '2rem', margin: '0 0 5px 0', color: 'var(--accent-color)' }}>
-      PANEL DE INVENTARIO 📦
-    </h2>
-    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>
-      Administra tus productos y categorías desde aquí.
-    </p>
-  </div>
-</div>
+      <div style={{
+        backgroundColor: 'var(--bg-card)',
+        padding: '30px',
+        borderRadius: '16px',
+        marginBottom: '40px',
+        borderLeft: '5px solid var(--accent-color)',
+        textAlign: 'left',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <h2 style={{ fontSize: '2rem', margin: '0 0 5px 0', color: 'var(--accent-color)' }}>
+            PANEL DE INVENTARIO 📦
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>
+            Administra tus productos y categorías desde aquí.
+          </p>
+        </div>
+      </div>
       
       <div className="acciones-container">
-        
         <input 
           type="text" 
           placeholder="🔍 Buscar producto..." 
@@ -107,16 +103,16 @@ function Home() {
             <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: 'auto' }}>
               <button 
                 style={{ flex: 1, background: '#f1c40f', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                onClick={() => navigate('/cargar', { state: { productoEditar: producto } })}
+                onClick={() => navigate(`/editar/${producto.id}`)}
               >
-                 Editar
+                  Editar
               </button>
               <button 
                 className="btn-eliminar" 
                 style={{ flex: 1 }}
                 onClick={() => handleEliminar(producto.id)}
               >
-                 Eliminar
+                  Eliminar
               </button>
             </div>
           </div>
