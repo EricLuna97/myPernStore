@@ -12,6 +12,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(productosRoutes); 
 app.use(categoriasRoutes);
 app.use('/auth', authRoutes);
+app.use(require('./src/routes/ventas.routes'));
 
 app.listen(3000, () => {
   console.log('🚀 Servidor corriendo en http://localhost:3000');

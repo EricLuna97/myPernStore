@@ -16,3 +16,10 @@ CREATE TABLE productos (
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 3. Tabla de Ventas
+CREATE TABLE ventas (
+    id SERIAL PRIMARY KEY,
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total NUMERIC(10, 2) NOT NULL,
+    resumen TEXT NOT NULL
+);

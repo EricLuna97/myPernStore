@@ -3,9 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getProducts, deleteProduct } from '../services/productService';
 import '../App.css'; 
 import toast from 'react-hot-toast';
+import { useCart } from '../context/CartContext';
 
 function Home() {
-  const navigate = useNavigate();  
+  const navigate = useNavigate(); 
+  const { addToCart } = useCart(); 
   const [productos, setProductos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
 
@@ -129,29 +131,34 @@ function Home() {
 
             <p className="precio">${producto.precio}</p>
             
+            <button 
+                className="btn-agregar" 
+                style={{ width: '100%', marginBottom: '10px', fontSize: '1rem' }}
+                onClick={() => addToCart(producto)}
+                disabled={producto.stock <= 0} // Deshabilitar si no hay stock
+            >
+                {producto.stock > 0 ? '🛒 Agregar al Pedido' : 'Sin Stock ❌'}
+            </button>
+
+            {/* Botones de Admin (Editar/Eliminar) abajo más pequeños */}
             <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: 'auto' }}>
               <button 
-                style={{ flex: 1, background: '#f1c40f', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                style={{ flex: 1, background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}
                 onClick={() => navigate(`/editar/${producto.id}`)}
               >
                   Editar
               </button>
               <button 
                 className="btn-eliminar" 
-                style={{ flex: 1 }}
+                style={{ flex: 1, fontSize:'0.8rem' }}
                 onClick={() => handleEliminar(producto.id)}
               >
-                  Baja
+                  Borrar
               </button>
             </div>
           </div>
         ))}
-
-        {productosFiltrados.length === 0 && (
-          <p style={{ gridColumn: '1 / -1', marginTop: '20px', textAlign:'center', color:'#666' }}>
-            No hay productos que coincidan con la búsqueda.
-          </p>
-        )}
+        {/* ... */}
       </div>
     </div>
   );

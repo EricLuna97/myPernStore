@@ -5,8 +5,9 @@ import Cargar from './pages/Cargar';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
-
+import Carrito from './pages/Carrito';
 import './App.css';
+import Ventas from './pages/Ventas';
 
 function App() {
   return (
@@ -44,6 +45,8 @@ function App() {
 
       <div className='main-content'>
         <Routes>
+          <Route path="/historial" element={<ProtectedRoute><Ventas /></ProtectedRoute>}/>
+          <Route path="/carrito" element={<ProtectedRoute><Carrito /></ProtectedRoute>}/>
           <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/cargar" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
           <Route path="/editar/:id" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
