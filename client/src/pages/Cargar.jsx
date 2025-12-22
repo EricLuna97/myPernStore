@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-// 👇 Importamos useParams para leer la URL y las nuevas funciones del servicio
+import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createProduct, updateProduct, createCategory, getCategories, getProductById } from '../services/productService';
 import './Cargar.css'; 
@@ -66,7 +66,7 @@ function Cargar() {
   // --- ENVIAR PRODUCTO (CREAR O EDITAR) ---
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
-    if (!formData.categoria) return alert("¡Selecciona una categoría!");
+    if (!formData.categoria) return toast.error("¡Debes seleccionar una categoría!");
 
     const data = new FormData();
     data.append('nombre', formData.nombre);
@@ -80,19 +80,19 @@ function Cargar() {
       if (isEditing) {
         // --- MODO EDITAR ---
         await updateProduct(id, data);
-        alert('¡Producto actualizado correctamente! 🔄');
+        toast.success('¡Producto actualizado! 🔄');
         navigate('/'); // Volver al catálogo tras editar
       } else {
         // --- MODO CREAR ---
         await createProduct(data);
-        alert('¡Producto creado exitosamente! 💾');
+        toast.success('¡Producto guardado en inventario! 💾');
         // Limpiar solo si creamos
         setFormData({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen: null });
         document.getElementById('fileInput').value = "";
       }
     } catch (error) {
       console.error(error);
-      alert('Error al guardar producto');
+      toast.error('Error al guardar el producto ❌');
     }
   };
 
@@ -101,12 +101,12 @@ function Cargar() {
     e.preventDefault();
     try {
       await createCategory(newCat);
-      alert(`Categoría "${newCat}" creada! 📂`);
+      toast.success(`Categoría "${newCat}" creada 📂`);
       setNewCat(''); 
       cargarCategorias(); 
     } catch (error) {
       console.error(error);
-      alert('Error al crear categoría');
+      toast.error('Error al crear categoría');
     }
   };
 

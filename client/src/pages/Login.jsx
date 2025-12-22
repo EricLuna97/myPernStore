@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css'; 
+import toast from 'react-hot-toast';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -21,14 +22,13 @@ function Login() {
 
       if (response.ok) {
         localStorage.setItem('token', data.token);
-        alert("¡Bienvenido al sistema! 🔓");
+        toast.success("¡Acceso Autorizado! 🔓");
         navigate('/'); 
       } else {
-        alert("Error: " + data.message);
+        toast.error(data.error || "Acceso Denegado ⛔");
       }
     } catch (error) {
-      console.error(error);
-      alert("Error al conectar con el servidor");
+      toast.error("Error de conexión con el servidor");
     }
   };
 

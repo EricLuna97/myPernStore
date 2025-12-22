@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './NavBar.css';
+import toast from 'react-hot-toast';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -12,10 +13,15 @@ function Navbar() {
   const isAuth = !!localStorage.getItem('token');
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+    if (window.confirm("¿Estás seguro de que quieres cerrar sesión? 🔒")) {
+      
+      localStorage.removeItem('token');
+      
+      toast.success("¡Hasta la próxima! 👋");
+      
+      navigate('/login');
+    }
   };
-
   return (
     <nav className="navbar">
       <div className="navbar-logo">

@@ -1,37 +1,57 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/NavBar';
 import Home from './pages/Home';
 import Cargar from './pages/Cargar';
-import './App.css';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
+import { Toaster } from 'react-hot-toast';
+
+import './App.css';
 
 function App() {
   return (
-   
-   <BrowserRouter>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/cargar" 
-        element={
-        <ProtectedRoute>
-          <Cargar />
-          </ProtectedRoute>
-        }
+    <>
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            background: '#1a1a1a', // Fondo oscuro
+            color: '#fff',         // Texto blanco
+            border: '1px solid #00f3ff', // Borde Neón Cyan
+            padding: '16px',
+            fontSize: '1rem',
+          },
+          success: {
+            iconTheme: {
+              primary: '#00f3ff',
+              secondary: '#000',
+            },
+          },
+          error: {
+            style: {
+              border: '1px solid #ff0055', // Borde Neón Rojo para errores
+            },
+            iconTheme: {
+              primary: '#ff0055',
+              secondary: '#fff',
+            },
+          },
+        }}
       />
-        <Route path="/login" element={<Login />} />
-        <Route 
-  path="/editar/:id" 
-  element={
-    <ProtectedRoute>
-      <Cargar />
-    </ProtectedRoute>
-  } 
-/>
-      </Routes>
-    </BrowserRouter>
-  );  
+
+      <Navbar />
+
+      <div className='main-content'>
+        <Routes>
+          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/cargar" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
+          <Route path="/editar/:id" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </div>
+    </>
+  );
 }
 
 export default App;
