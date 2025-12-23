@@ -40,7 +40,7 @@ function Home() {
     producto.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  // --- 📊 CÁLCULO DE MÉTRICAS (NUEVO) ---
+  // --- 📊 CÁLCULO DE MÉTRICAS ---
   const totalProductos = productos.length;
   const valorInventario = productos.reduce((total, prod) => {
     return total + (parseFloat(prod.precio) * parseInt(prod.stock));
@@ -135,12 +135,11 @@ function Home() {
                 className="btn-agregar" 
                 style={{ width: '100%', marginBottom: '10px', fontSize: '1rem' }}
                 onClick={() => addToCart(producto)}
-                disabled={producto.stock <= 0} // Deshabilitar si no hay stock
+                disabled={producto.stock <= 0} 
             >
                 {producto.stock > 0 ? '🛒 Agregar al Pedido' : 'Sin Stock ❌'}
             </button>
 
-            {/* Botones de Admin (Editar/Eliminar) abajo más pequeños */}
             <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: 'auto' }}>
               <button 
                 style={{ flex: 1, background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}
@@ -158,7 +157,6 @@ function Home() {
             </div>
           </div>
         ))}
-        {/* ... */}
       </div>
     </div>
   );

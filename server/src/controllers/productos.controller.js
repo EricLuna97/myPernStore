@@ -1,6 +1,5 @@
 const pool = require('../config/db');
 
-// OBTENER TODOS
 const getAllProductos = async (_req, res) => {
   try {
     const result = await pool.query('SELECT * FROM productos');
@@ -27,11 +26,10 @@ const getProducto = async (req, res) => {
   }
 };
 
-// CREAR
 const createProducto = async (req, res) => {
   const { nombre, precio, stock, categoria_id } = req.body;
   const imagenFilename = req.file ? req.file.filename : null;
-  const imagen_url = imagenFilename ? 'http://localhost:3000/uploads/' + imagenFilename : null;
+  const imagen_url = imagenFilename ? `${req.protocol}://${req.get('host')}/uploads/${imagenFilename}` : null;
 
   try {
     const result = await pool.query(
@@ -46,7 +44,6 @@ const createProducto = async (req, res) => {
   }
 };
 
-// ELIMINAR
 const deleteProducto = async (req, res) => {
   const { id } = req.params;
 
@@ -62,23 +59,20 @@ const deleteProducto = async (req, res) => {
   }
 };
 
-// ACTUALIZAR
 const updateProducto = async (req, res) => {
   const { id } = req.params;
   const { nombre, precio, stock, categoria_id } = req.body;
-  const imagen_url = req.file ? `http://localhost:3000/uploads/${req.file.filename}` : null;
+  const imagen_url = req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null;
 
   try {
     let result;
     
     if (imagen_url) {
-      // Actualizamos TODO (incluida imagen)
       result = await pool.query(
         'UPDATE productos SET nombre=$1, precio=$2, stock=$3, categoria_id=$4, imagen_url=$5 WHERE id=$6 RETURNING *',
         [nombre, precio, stock, categoria_id, imagen_url, id]
       );
     } else {
-      // Actualizamos todo MENOS imagen
       result = await pool.query(
         'UPDATE productos SET nombre=$1, precio=$2, stock=$3, categoria_id=$4 WHERE id=$5 RETURNING *',
         [nombre, precio, stock, categoria_id, id]

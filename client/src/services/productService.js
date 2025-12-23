@@ -1,12 +1,10 @@
 const API_URL = 'http://localhost:3000'; 
 
-// Función auxiliar para obtener el token
 const getToken = () => {
   return localStorage.getItem('token');
 };
 
 export const getProducts = async () => {
-  // Esta es pública, no necesita token
   const response = await fetch(`${API_URL}/productos`);
   const data = await response.json();
   return data;
@@ -71,7 +69,7 @@ export const getCategories = async () => {
 
 // Crear nueva categoría
 export const createCategory = async (nombre) => {
-  const token = getToken(); // Usamos la función auxiliar aquí también
+  const token = getToken(); 
   const response = await fetch(`${API_URL}/categorias`, {
     method: 'POST',
     headers: {

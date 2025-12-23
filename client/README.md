@@ -1,16 +1,42 @@
-# React + Vite
+# PERNSTORE - Sistema de Gestión de Ventas (PERN Stack)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+PERNSTORE es un sistema diseñado para gestionar el inventario y las ventas de una tienda (como demostración el rubro tecnología). Permite control de stock en tiempo real, registro de transacciones históricas y autenticación segura.
 
-Currently, two official plugins are available:
+## 🚀 Tecnologías
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Frontend:** React + Vite
+- **Backend:** Node.js + Express
+- **Base de Datos:** PostgreSQL
+- **Estilos:** CSS Modules / Vanilla CSS
 
-## React Compiler
+## ⚙️ Instalación y Configuración
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Este proyecto requiere tener Node.js y PostgreSQL instalados localmente.
 
-## Expanding the ESLint configuration
+### 1. Clonar el repositorio
+git clone https://github.com/EricLuna97/myPernStore.git
+cd PernStore
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 2. Configuración del Backend
+cd server
+npm install
+
+# Crea un archivo .env basado en .env.example y configura tus credenciales de PostgreSQL
+
+npm run dev
+
+### 3. Configuración del Frontend
+cd client
+npm install
+npm run dev
+
+## 🗄️ Base de Datos
+
+Ejecuta el script `database/init.sql` (si lo tienes) o crea las tablas `productos`, `users` y `ventas` manualmente.
+
+## ✨ Funcionalidades
+
+- Autenticación de usuarios (JWT).
+- CRUD completo de productos con gestión de imágenes.
+- Carrito de compras con descuento de stock automático.
+- Historial de ventas inmutable.

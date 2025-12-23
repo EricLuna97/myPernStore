@@ -1,19 +1,17 @@
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import '../App.css'; // Usamos los mismos estilos base
+import '../App.css'; 
 
 function Carrito() {
   const { cart, removeFromCart, clearCart } = useCart();
   const navigate = useNavigate();
 
-  // Calcular el Total a Pagar
   const totalGeneral = cart.reduce((acc, item) => acc + (parseFloat(item.precio) * item.quantity), 0);
 
  const handleFinalizarVenta = async () => {
-    // 1. Preguntamos confirmación
     if (!window.confirm("¿Confirmar venta y procesar stock? 💰")) {
-      return; // Si dice cancelar, paramos aquí.
+      return; 
     }
 
     try {
@@ -28,7 +26,7 @@ function Carrito() {
         },
         body: JSON.stringify({
           total: totalGeneral,
-          items: cart // Enviamos el carrito completo
+          items: cart 
         })
       });
 
