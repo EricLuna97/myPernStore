@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createProduct, updateProduct, createCategory, getCategories, getProductById } from '../services/productService';
+import AIAssistant from '../components/AIAssistant';
 import './Cargar.css'; 
 
 function Cargar() {
-  const { id } = useParams(); // ¿Hay un ID en la URL?
+  const { id } = useParams(); 
   const navigate = useNavigate();
-  const isEditing = !!id; // Si hay ID, es true (Modo Edición)
+  const isEditing = !!id; 
 
   const [listaCategorias, setListaCategorias] = useState([]);
   const [newCat, setNewCat] = useState('');
@@ -17,15 +18,12 @@ function Cargar() {
     categoria: '', imagen: null
   });
 
-  // 1. CARGAR DATOS INICIALES (Categorías y Producto si es edición)
   useEffect(() => {
     cargarCategorias();
-    
-    // Si estamos editando, traemos los datos del producto
     if (isEditing) {
       cargarDatosProducto();
     }
-  }, [id]); // Se ejecuta si cambia el ID
+  }, [id]);
 
   const cargarCategorias = async () => {
     try {
@@ -39,20 +37,45 @@ function Cargar() {
   const cargarDatosProducto = async () => {
     try {
       const producto = await getProductById(id);
-      // Rellenamos el formulario con los datos que vinieron de la BD
       setFormData({
         nombre: producto.nombre,
         descripcion: producto.descripcion || '',
         precio: producto.precio,
         stock: producto.stock,
         categoria: producto.categoria || '',
-        imagen: null // La imagen no se precarga por seguridad del navegador
+        imagen: null 
       });
     } catch (error) {
-      console.error("Error cargando producto para editar", error);
-      alert("No se pudo cargar el producto");
+      console.error(error);
+      toast.error("Error cargando producto");
     }
   };
+
+  const handleAIResult = useCallback((productData) => {
+    let categoriaEncontrada = '';
+    
+    if (productData.category && listaCategorias.length > 0) {
+      const match = listaCategorias.find(cat => 
+        cat.nombre.toLowerCase().includes(productData.category.toLowerCase()) ||
+        productData.category.toLowerCase().includes(cat.nombre.toLowerCase())
+      );
+      if (match) categoriaEncontrada = match.nombre;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      nombre: productData.name || prev.nombre,
+      precio: productData.price || prev.precio,
+      stock: productData.stock || prev.stock,
+      descripcion: productData.description || prev.descripcion,
+      categoria: categoriaEncontrada || prev.categoria
+    }));
+
+    setTimeout(() => {
+      toast.success('¡Datos autocompletados con IA! ✨');
+    }, 100);
+
+  }, [listaCategorias]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -63,7 +86,6 @@ function Cargar() {
     setFormData({ ...formData, imagen: e.target.files[0] });
   };
 
-  // --- ENVIAR PRODUCTO (CREAR O EDITAR) ---
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     if (!formData.categoria) return toast.error("¡Debes seleccionar una categoría!");
@@ -78,30 +100,26 @@ function Cargar() {
 
     try {
       if (isEditing) {
-        // --- MODO EDITAR ---
         await updateProduct(id, data);
         toast.success('¡Producto actualizado! 🔄');
-        navigate('/'); // Volver al catálogo tras editar
+        navigate('/'); 
       } else {
-        // --- MODO CREAR ---
         await createProduct(data);
-        toast.success('¡Producto guardado en inventario! 💾');
-        // Limpiar solo si creamos
+        toast.success('¡Producto guardado! 💾');
         setFormData({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen: null });
         document.getElementById('fileInput').value = "";
       }
     } catch (error) {
       console.error(error);
-      toast.error('Error al guardar el producto ❌');
+      toast.error('Error al guardar');
     }
   };
 
-  // --- CREAR CATEGORÍA ---
   const handleSubmitCategory = async (e) => {
     e.preventDefault();
     try {
       await createCategory(newCat);
-      toast.success(`Categoría "${newCat}" creada 📂`);
+      toast.success(`Categoría "${newCat}" creada`);
       setNewCat(''); 
       cargarCategorias(); 
     } catch (error) {
@@ -114,11 +132,18 @@ function Cargar() {
     <div className="cargar-container">
       <div className="admin-grid">
         
-        {/* PANEL IZQUIERDO */}
         <div className="form-wrapper">
-          {/* Título cambia según el modo */}
           <h1>{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</h1>
           
+          {!isEditing && (
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', border: '1px solid #2563eb' }}>
+               <label style={{display: 'block', marginBottom: '0.5rem', color: '#2563eb', fontWeight: 'bold'}}>
+                 ✨ Carga Rápida (Beta IA)
+               </label>
+               <AIAssistant onProductDetected={handleAIResult} />
+            </div>
+          )}
+
           <form onSubmit={handleSubmitProduct}>
             <div className="form-group">
               <label>Nombre del Producto</label>
@@ -181,7 +206,6 @@ function Cargar() {
           </form>
         </div>
 
-        {/* PANEL DERECHO: CATEGORÍAS (Siempre visible) */}
         <div className="form-wrapper category-wrapper">
           <h1>Nueva Categoría</h1>
           <form onSubmit={handleSubmitCategory}>

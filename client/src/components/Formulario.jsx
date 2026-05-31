@@ -1,3 +1,4 @@
+import AIAssistant from "../components/AIAssistant"; 
 import { useState, useEffect } from 'react';
 import { createProduct, updateProduct } from '../services/productService';
 import { getCategories } from '../services/categoryService';
@@ -30,6 +31,35 @@ function Formulario({ alCrear, productoExistente }) {
     };
     cargarTodo();
   }, [productoExistente]);
+
+  // --- NUEVA LÓGICA: MANEJO DE IA ---
+  const handleAIResult = (productData) => {
+    console.log("🤖 IA Respondió:", productData);
+
+    // Lógica inteligente para encontrar la categoría
+    // La IA nos da un texto (ej: "Bebidas"), pero necesitamos el ID (ej: 4)
+    let categoriaEncontrada = '';
+    
+    if (productData.category && listaCategorias.length > 0) {
+      const match = listaCategorias.find(cat => 
+        // Comparamos ignorando mayúsculas/minúsculas
+        cat.nombre.toLowerCase().includes(productData.category.toLowerCase()) ||
+        productData.category.toLowerCase().includes(cat.nombre.toLowerCase())
+      );
+      if (match) categoriaEncontrada = match.id;
+    }
+
+    // Actualizamos el estado del formulario con los datos de la IA
+    setDatos(prev => ({
+      ...prev,
+      nombre: productData.name || prev.nombre,
+      precio: productData.price || prev.precio,
+      stock: productData.stock || prev.stock,
+      description: productData.description || prev.description, 
+      categoria_id: categoriaEncontrada || prev.categoria_id
+    }));
+  };
+  // ------------------------------------
 
   const handleChange = (e) => {
     setDatos({ ...datos, [e.target.name]: e.target.value });
@@ -76,6 +106,11 @@ function Formulario({ alCrear, productoExistente }) {
       <h2>
         {productoExistente ? `Editar: ${productoExistente.nombre}` : 'Nuevo Producto'}
       </h2>
+
+        <div style={{ marginBottom: '20px', padding: '15px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+           <label style={{display: 'block', marginBottom: '10px', color: '#0369a1', fontWeight: 'bold'}}>✨ Autocompletar con IA</label>
+           <AIAssistant onProductDetected={handleAIResult} />
+        </div>
       
       <label>Nombre del Producto:</label>
       <input 
