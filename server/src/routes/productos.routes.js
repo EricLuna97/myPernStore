@@ -7,10 +7,10 @@ const verifyToken = require('../middlewares/auth.middleware');
 
 const router = Router();
 
-router.get('/productos', getAllProductos);
-router.get('/productos/:id', getProducto);
-router.post('/productos', verifyToken, upload.single('imagen'), createProducto);
-router.delete('/productos/:id', verifyToken, deleteProducto);
-router.put('/productos/:id', verifyToken, upload.single('imagen'), updateProducto);
+router.get('/', getAllProductos);
+router.get('/:id', getProducto);
+router.post('/', verifyToken, upload.single('imagen'), createProducto);
+router.put('/:id', verifyToken, upload.single('imagen'), updateProducto);
+router.delete('/:id', verifyToken, deleteProducto);
 
 module.exports = router;

@@ -3,7 +3,7 @@ const { getAllCategorias, createCategoria } = require('../controllers/categorias
 
 const router = Router();
 
-router.get('/categorias', getAllCategorias);
-router.post('/categorias', createCategoria);
+router.get('/', getAllCategorias);
+router.post('/', createCategoria);
 
 module.exports = router;
