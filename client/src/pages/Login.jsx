@@ -12,7 +12,7 @@ function Login() {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login', {
+      const response = await fetch('http://localhost:4000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -22,12 +22,12 @@ function Login() {
 
       if (response.ok) {
         localStorage.setItem('token', data.token);
-        toast.success("¡Acceso Autorizado! 🔓");
+        toast.success("¡Acceso Autorizado!");
         navigate('/'); 
       } else {
         toast.error(data.error || "Acceso Denegado ⛔");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error de conexión con el servidor");
     }
   };
@@ -35,24 +35,24 @@ function Login() {
   return (
     <div className="login-container">
       <form className="login-form" onSubmit={handleLogin}>
-        <h2>🔐 Acceso</h2>
+        <h2>Acceso</h2>
         
-        <label>Email de Agente:</label>
+        <label></label>
         <input 
           type="email" 
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required 
-          placeholder="admin@tienda.com"
+          placeholder="Email"
         />
 
-        <label>Clave de Seguridad:</label>
+        <label></label>
         <input 
           type="password" 
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required 
-          placeholder="••••••••"
+          placeholder="Contraseña"
         />
 
         <button type="submit">Ingresar</button>

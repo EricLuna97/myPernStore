@@ -10,7 +10,8 @@ function Formulario({ alCrear, productoExistente }) {
   
   const [datos, setDatos] = useState({
     nombre: '',
-    precio: '',
+    precio_costo: '',
+    precio_venta: '',
     stock: '',
     categoria_id: '' 
   });
@@ -121,11 +122,20 @@ function Formulario({ alCrear, productoExistente }) {
         required 
       />
       
-      <label>Precio ($):</label>
+      <label>precio_costo ($):</label>
       <input 
         type="number" 
-        name="precio" 
-        value={datos.precio} 
+        name="precio costo" 
+        value={datos.precio_costo} 
+        onChange={handleChange} 
+        required 
+      />
+
+      <label>precio_venta ($):</label>
+      <input 
+        type="number" 
+        name="precio venta" 
+        value={datos.precio_venta} 
         onChange={handleChange} 
         required 
       />

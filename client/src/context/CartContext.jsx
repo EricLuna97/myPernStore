@@ -1,57 +1,64 @@
-import { createContext, useState, useContext, useEffect } from 'react';
-import toast from 'react-hot-toast';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useContext } from 'react';
 
-const CartContext = createContext();
+// Creamos el contexto
+export const CartContext = createContext();
 
-export const useCart = () => useContext(CartContext);
-
+// Creamos el Provider
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem('shopping-cart');
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+  const [cart, setCart] = useState([]);
 
-  useEffect(() => {
-    localStorage.setItem('shopping-cart', JSON.stringify(cart));
-  }, [cart]);
-
- const addToCart = (product) => {
-    
-    const existingItem = cart.find((item) => item.id === product.id);
-
-    if (existingItem) {
-      toast.success(`Se agregó otra unidad: ${product.nombre}`);
-    } else {
-      toast.success(`${product.nombre} agregado al pedido 🛒`);
-    }
-
-    setCart((prevCart) => {
-      const isInCart = prevCart.find((item) => item.id === product.id);
-
-      if (isInCart) {
-        return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+  const addToCart = (producto) => {
+    setCart((carritoActual) => {
+      const existe = carritoActual.find((item) => item.id === producto.id);
+      if (existe) {
+        return carritoActual.map((item) =>
+          item.id === producto.id ? { ...item, quantity: item.quantity + 1 } : item
         );
-      } else {
-        return [...prevCart, { ...product, quantity: 1 }];
       }
+      return [...carritoActual, { ...producto, quantity: 1 }];
     });
   };
 
-  const removeFromCart = (id) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
-    toast.error("Producto eliminado del pedido");
+  const removeFromCart = (idProducto) => {
+    setCart((carritoActual) => carritoActual.filter((item) => item.id !== idProducto));
+  };
+
+  const decreaseQuantity = (idProducto) => {
+    setCart((carritoActual) => {
+      return carritoActual
+        .map((item) => {
+          if (item.id === idProducto) {
+            return { ...item, quantity: item.quantity - 1 };
+          }
+          return item;
+        })
+        .filter((item) => item.quantity > 0);
+    });
   };
 
   const clearCart = () => {
     setCart([]);
   };
 
-  const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
-
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, totalItems }}>
+    <CartContext.Provider value={{ 
+      cart, 
+      addToCart, 
+      removeFromCart, 
+      decreaseQuantity, 
+      clearCart 
+    }}>
       {children}
     </CartContext.Provider>
   );
+};
+
+// Exportamos el hook para que la vista pueda usarlo
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error("useCart debe ser usado dentro de un CartProvider");
+  }
+  return context;
 };

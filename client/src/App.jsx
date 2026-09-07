@@ -6,8 +6,8 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 import Carrito from './pages/Carrito';
-import './App.css';
 import Ventas from './pages/Ventas';
+import { Button } from "@/components/ui/button";
 
 function App() {
   return (
@@ -54,6 +54,7 @@ function App() {
         </Routes>
       </div>
     </>
+  
   );
 }
 

@@ -1,28 +1,31 @@
 import { useEffect, useState } from 'react';
-import '../App.css';
 
 function Ventas() {
   const [ventas, setVentas] = useState([]);
 
   useEffect(() => {
+    // 1. La función nace estrictamente dentro del efecto
+    const cargarVentas = async () => {
+      try {
+        const res = await fetch('http://localhost:4000/api/ventas');
+        const data = await res.json();
+        setVentas(data);
+      } catch (error) {
+        console.error("Error al cargar ventas:", error);
+      }
+    };
+
+    // 2. Se ejecuta inmediatamente
     cargarVentas();
   }, []);
 
-  const cargarVentas = async () => {
-    try {
-      const res = await fetch('http://localhost:3000/ventas');
-      const data = await res.json();
-      setVentas(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  // Formato de fecha legible
+  // Formato de fecha estandarizado a hora local
   const formatDate = (fechaString) => {
-    return new Date(fechaString).toLocaleString('es-ES', { 
-      dateStyle: 'medium', 
-      timeStyle: 'short' 
+    const isUTC = fechaString.endsWith('Z') ? fechaString : `${fechaString}Z`;
+    return new Date(isUTC).toLocaleString('es-AR', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      dateStyle: 'medium',
+      timeStyle: 'short'
     });
   };
 
@@ -31,7 +34,7 @@ function Ventas() {
       <div className="form-wrapper" style={{ maxWidth: '1000px', margin: '0 auto' }}>
         
         <h1 style={{ borderBottom: '1px solid #00f3ff', paddingBottom: '10px' }}>
-          Registro de Ventas 💰
+          Registro de Ventas 
         </h1>
         
         {ventas.length === 0 ? (

@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
-import { createProduct, updateProduct, createCategory, getCategories, getProductById } from '../services/productService';
+import { createProduct, updateProduct, getProductById } from '../services/productService';
+import { getCategories, createCategory } from '../services/categoryService';
 import AIAssistant from '../components/AIAssistant';
-import './Cargar.css'; 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 
 function Cargar() {
   const { id } = useParams(); 
@@ -14,104 +17,154 @@ function Cargar() {
   const [newCat, setNewCat] = useState('');
 
   const [formData, setFormData] = useState({
-    nombre: '', descripcion: '', precio: '', stock: '', 
-    categoria: '', imagen: null
+    nombre: '', 
+    descripcion: '', 
+    precio_costo: '', 
+    precio_venta: '', 
+    stock: '',
+    categoria_id: '', 
+    imagen: null
   });
 
-  useEffect(() => {
-    cargarCategorias();
-    if (isEditing) {
-      cargarDatosProducto();
-    }
-  }, [id]);
-
-  const cargarCategorias = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const data = await getCategories();
       setListaCategorias(data);
     } catch (error) {
       console.error(error);
+      toast.error("Error al cargar categorias");
     }
-  };
+  }, []); 
 
-  const cargarDatosProducto = async () => {
-    try {
-      const producto = await getProductById(id);
-      setFormData({
-        nombre: producto.nombre,
-        descripcion: producto.descripcion || '',
-        precio: producto.precio,
-        stock: producto.stock,
-        categoria: producto.categoria || '',
-        imagen: null 
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error("Error cargando producto");
+  useEffect(() => {
+    const initFetch = async () => {
+      await fetchCategories();
+    };
+    initFetch();
+  }, [fetchCategories]);
+
+  useEffect(() => {
+    const existingScript = document.getElementById('cloudinary-widget-script');
+    if (!existingScript) {
+      const script = document.createElement('script');
+      script.id = 'cloudinary-widget-script';
+      script.src = 'https://upload-widget.cloudinary.com/global/all.js';
+      script.async = true;
+      document.body.appendChild(script);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const cargarDatosProducto = async () => {
+      try {
+        const producto = await getProductById(id);
+        setFormData({
+          nombre: producto.nombre || '',
+          descripcion: producto.descripcion || '',
+          precio_costo: producto.precio_costo || '',
+          precio_venta: producto.precio_venta || '',
+          stock: producto.stock || '',
+          categoria_id: producto.categoria_id || '',
+          imagen: producto.imagen_url || null
+        });
+      } catch (error) {
+        console.error(error);
+        toast.error("Error al cargar el producto");
+        navigate('/'); 
+      }
+    };
+
+    if (isEditing) {
+      cargarDatosProducto();
+    } else {
+      Promise.resolve().then(() => {
+        setFormData({
+          nombre: '', descripcion: '', precio_costo: '', precio_venta: '', stock: '',
+          categoria_id: '', imagen: null
+        });
+      });
+    }
+  }, [id, isEditing, navigate]); 
 
   const handleAIResult = useCallback((productData) => {
-    let categoriaEncontrada = '';
+    let categoriaEncontradaId = '';
     
     if (productData.category && listaCategorias.length > 0) {
       const match = listaCategorias.find(cat => 
         cat.nombre.toLowerCase().includes(productData.category.toLowerCase()) ||
         productData.category.toLowerCase().includes(cat.nombre.toLowerCase())
       );
-      if (match) categoriaEncontrada = match.nombre;
+      if (match) categoriaEncontradaId = match.id;
     }
 
     setFormData(prev => ({
       ...prev,
       nombre: productData.name || prev.nombre,
-      precio: productData.price || prev.precio,
+      precio_venta: productData.price || prev.precio_venta,
       stock: productData.stock || prev.stock,
       descripcion: productData.description || prev.descripcion,
-      categoria: categoriaEncontrada || prev.categoria
+      categoria_id: categoriaEncontradaId || prev.categoria_id
     }));
 
     setTimeout(() => {
-      toast.success('¡Datos autocompletados con IA! ✨');
+      toast.success('Datos autocompletados con IA');
     }, 100);
-
   }, [listaCategorias]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    setFormData({ ...formData, imagen: e.target.files[0] });
+  const handleCloudinaryUpload = (e) => {
+    e.preventDefault();
+    if (window.cloudinary) {
+      window.cloudinary.createUploadWidget(
+        {
+          cloudName: 'yqdjvd5v',
+          uploadPreset: 'pernstore_productos',
+          sources: ['local', 'camera', 'url'],
+          multiple: false,
+          clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+          maxImageFileSize: 2000000
+        },
+        (error, result) => {
+          if (!error && result && result.event === "success") {
+            setFormData(prev => ({ ...prev, imagen: result.info.secure_url }));
+            toast.success('Imagen subida correctamente');
+          }
+        }
+      ).open();
+    }
   };
 
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
-    if (!formData.categoria) return toast.error("¡Debes seleccionar una categoría!");
+    if (!formData.categoria_id) {
+      return toast.error("Debes seleccionar una categoria");
+    }
 
     const data = new FormData();
     data.append('nombre', formData.nombre);
     data.append('descripcion', formData.descripcion);
-    data.append('precio', formData.precio);
+    data.append('precio_costo', formData.precio_costo);
+    data.append('precio_venta', formData.precio_venta);
     data.append('stock', formData.stock);
-    data.append('categoria', formData.categoria);
+    data.append('categoria_id', formData.categoria_id);
     if (formData.imagen) data.append('imagen', formData.imagen);
 
     try {
       if (isEditing) {
         await updateProduct(id, data);
-        toast.success('¡Producto actualizado! 🔄');
+        toast.success('Producto actualizado exitosamente');
         navigate('/'); 
       } else {
         await createProduct(data);
-        toast.success('¡Producto guardado! 💾');
-        setFormData({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen: null });
-        document.getElementById('fileInput').value = "";
+        toast.success('Producto guardado exitosamente');
+        setFormData({ nombre: '', descripcion: '', precio_costo: '', precio_venta: '', stock: '', categoria_id: '', imagen: null });
       }
     } catch (error) {
-      console.error(error);
-      toast.error('Error al guardar');
+      toast.error(error.response?.data?.error || 'Error al guardar el producto');
     }
   };
 
@@ -119,108 +172,134 @@ function Cargar() {
     e.preventDefault();
     try {
       await createCategory(newCat);
-      toast.success(`Categoría "${newCat}" creada`);
+      toast.success(`Categoria ${newCat} creada`);
       setNewCat(''); 
-      cargarCategorias(); 
+      fetchCategories(); 
     } catch (error) {
-      console.error(error);
-      toast.error('Error al crear categoría');
+      toast.error(error.response?.data?.error || 'Error al crear la categoria');
     }
   };
 
   return (
-    <div className="cargar-container">
-      <div className="admin-grid">
+    <div className="container mx-auto py-8 px-4 max-w-6xl">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div className="form-wrapper">
-          <h1>{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</h1>
+        <Card className="lg:col-span-2 p-6 bg-card border-border shadow-sm">
+          <h1 className="text-2xl font-bold text-foreground mb-6">
+            {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
+          </h1>
           
           {!isEditing && (
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', border: '1px solid #2563eb' }}>
-               <label style={{display: 'block', marginBottom: '0.5rem', color: '#2563eb', fontWeight: 'bold'}}>
-                 ✨ Carga Rápida (Beta IA)
+            <div className="mb-6 p-4 bg-cyan-950/20 rounded-lg border border-cyan-900/50">
+               <label className="block mb-2 text-cyan-500 font-bold text-sm">
+                 Carga Rapida Asistida (IA)
                </label>
                <AIAssistant onProductDetected={handleAIResult} />
             </div>
           )}
 
-          <form onSubmit={handleSubmitProduct}>
-            <div className="form-group">
-              <label>Nombre del Producto</label>
-              <input 
-                type="text" name="nombre" className="form-input"
+          <form onSubmit={handleSubmitProduct} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">Nombre del Producto</label>
+              <Input 
+                type="text" name="nombre" 
                 value={formData.nombre} onChange={handleChange} required 
+                className="bg-background"
               />
             </div>
 
-            <div className="form-group">
-              <label>Descripción</label>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">Descripcion</label>
               <textarea 
-                name="descripcion" className="form-textarea"
+                name="descripcion" 
                 value={formData.descripcion} onChange={handleChange} 
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
 
-            <div className="form-group">
-              <label>Precio ($)</label>
-              <input 
-                type="number" name="precio" className="form-input"
-                value={formData.precio} onChange={handleChange} required 
-              />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Costo ($)</label>
+                <Input 
+                  type="number" name="precio_costo" 
+                  value={formData.precio_costo} onChange={handleChange} required 
+                  className="bg-background"
+                />
+              </div>
 
-            <div className="form-group">
-              <label>Stock</label>
-              <input 
-                type="number" name="stock" className="form-input"
-                value={formData.stock} onChange={handleChange} required 
-              />
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Venta ($)</label>
+                <Input 
+                  type="number" name="precio_venta" 
+                  value={formData.precio_venta} onChange={handleChange} required 
+                  className="bg-background"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Stock</label>
+                <Input 
+                  type="number" name="stock" 
+                  value={formData.stock} onChange={handleChange} required 
+                  className="bg-background"
+                />
+              </div>
             </div>
             
-            <div className="form-group">
-              <label>Categoría</label>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">Categoria</label>
               <select 
-                name="categoria" className="form-input select-cyber"
-                value={formData.categoria} onChange={handleChange} required
+                name="categoria_id" 
+                value={formData.categoria_id} onChange={handleChange} required
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <option value="">-- Selecciona una opción --</option>
+                <option value="">Selecciona una opcion</option>
                 {listaCategorias.map((cat) => (
-                  <option key={cat.id} value={cat.nombre}>
+                  <option key={cat.id} value={cat.id}>
                     {cat.nombre}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="form-group">
-              <label>Imagen {isEditing && "(Déjalo vacío para mantener la actual)"}</label>
-              <input 
-                id="fileInput" type="file" name="imagen" className="file-input"
-                onChange={handleFileChange} 
-              />
+            <div className="pt-2">
+              <label className="text-sm font-medium text-foreground mb-2 block">Imagen del Producto</label>
+              <div className="flex items-center gap-4">
+                <Button type="button" variant="outline" onClick={handleCloudinaryUpload} className="w-full md:w-auto">
+                  Subir Foto
+                </Button>
+                {formData.imagen && (
+                  <span className="text-sm text-cyan-500 font-medium truncate max-w-xs">
+                    Archivo listo para guardar
+                  </span>
+                )}
+              </div>
             </div>
 
-            <button type="submit" className="submit-btn">
-              {isEditing ? 'Actualizar Producto 🔄' : 'Guardar Producto 💾'}
-            </button>
+            <div className="pt-4">
+              <Button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold">
+                {isEditing ? 'Actualizar Producto' : 'Guardar Producto'}
+              </Button>
+            </div>
           </form>
-        </div>
+        </Card>
 
-        <div className="form-wrapper category-wrapper">
-          <h1>Nueva Categoría</h1>
-          <form onSubmit={handleSubmitCategory}>
-            <div className="form-group">
-              <input 
-                type="text" className="form-input"
+        <Card className="p-6 bg-card border-border shadow-sm h-fit">
+          <h2 className="text-xl font-bold text-foreground mb-6">Nueva Categoria</h2>
+          <form onSubmit={handleSubmitCategory} className="space-y-4">
+            <div>
+              <Input 
+                type="text" 
                 value={newCat} onChange={(e) => setNewCat(e.target.value)}
-                placeholder="Ej: Cyberware" required
+                placeholder="Ej: Accesorios" required
+                className="bg-background"
               />
             </div>
-            <button type="submit" className="submit-btn btn-secondary">
-              Crear Categoría +
-            </button>
+            <Button type="submit" variant="secondary" className="w-full font-bold">
+              Crear Categoria
+            </Button>
           </form>
-        </div>
+        </Card>
 
       </div>
     </div>
