@@ -1,9 +1,32 @@
 const pool = require('../config/db');
 
-// 1. Obtener historial de ventas (Cabeceras)
+// 1. Obtener historial de ventas (Cabeceras + Detalles)
 const getAllVentas = async (_req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM ventas ORDER BY fecha DESC');
+    const query = `
+      SELECT 
+        v.id, 
+        v.fecha, 
+        v.total,
+        u.nombre AS vendedor,
+        json_agg(
+          json_build_object(
+            'producto_id', dv.producto_id,
+            'nombre', p.nombre,
+            'cantidad', dv.cantidad,
+            'precio_historico', dv.precio_historico,
+            'subtotal', dv.subtotal
+          )
+        ) AS detalles
+      FROM ventas v
+      LEFT JOIN usuarios u ON v.usuario_id = u.id
+      LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
+      LEFT JOIN productos p ON dv.producto_id = p.id
+      GROUP BY v.id, v.fecha, v.total, u.nombre
+      ORDER BY v.fecha DESC;
+    `;
+    
+    const result = await pool.query(query);
     res.json(result.rows);
   } catch (error) {
     console.error("Error en getAllVentas:", error.message);

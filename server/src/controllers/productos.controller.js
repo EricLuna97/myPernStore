@@ -31,11 +31,19 @@ const getProducto = async (req, res) => {
 
 // 3. Crear producto (Estandarización financiera)
 const createProducto = async (req, res) => {
-  // Extraemos los nuevos campos del MER
-  const { nombre, descripcion, precio_costo, precio_venta, stock, categoria_id } = req.body;
+  // 1. Agregamos 'imagen' al destructuring de req.body
+  const { nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen } = req.body;
   
-  const imagenFilename = req.file ? req.file.filename : null;
-  const imagen_url = imagenFilename ? `${req.protocol}://${req.get('host')}/uploads/${imagenFilename}` : null;
+  // 2. Evaluamos de dónde viene la imagen
+  let imagen_url = null;
+  
+  if (imagen) {
+    // Si viene la URL de Cloudinary como texto, la usamos directamente
+    imagen_url = imagen; 
+  } else if (req.file) {
+    // Si viene un archivo físico (método viejo), armamos la ruta local
+    imagen_url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  }
 
   try {
     const result = await pool.query(
@@ -77,8 +85,19 @@ const deleteProducto = async (req, res) => {
 // 5. Actualizar producto
 const updateProducto = async (req, res) => {
   const { id } = req.params;
-  const { nombre, descripcion, precio_costo, precio_venta, stock, categoria_id } = req.body;
-  const imagen_url = req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null;
+  
+  // 1. Agregamos 'imagen' al destructuring del body
+  const { nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen } = req.body;
+  
+  // 2. Evaluamos si el frontend envió una nueva imagen
+  let imagen_url = null;
+  if (imagen) {
+    // Si viene la URL de Cloudinary
+    imagen_url = imagen;
+  } else if (req.file) {
+    // Fallback: si es un archivo local
+    imagen_url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  }
 
   try {
     let result;
@@ -89,6 +108,7 @@ const updateProducto = async (req, res) => {
       return res.status(404).json({ message: "No se puede editar un producto inactivo o inexistente" });
     }
 
+    // Si hay una nueva imagen_url, actualiza la base de datos incluyendo ese campo.
     if (imagen_url) {
       result = await pool.query(
         `UPDATE productos 
@@ -97,6 +117,7 @@ const updateProducto = async (req, res) => {
         [nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url, id]
       );
     } else {
+      // Si no enviaron foto nueva, actualiza todo excepto la imagen (conserva la que ya estaba)
       result = await pool.query(
         `UPDATE productos 
         SET nombre=$1, descripcion=$2, precio_costo=$3, precio_venta=$4, stock=$5, categoria_id=$6 
