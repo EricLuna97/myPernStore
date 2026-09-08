@@ -189,14 +189,14 @@ function Cargar() {
             {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
           </h1>
           
-          {!isEditing && (
+          {/*{!isEditing && (
             <div className="mb-6 p-4 bg-cyan-950/20 rounded-lg border border-cyan-900/50">
                <label className="block mb-2 text-cyan-500 font-bold text-sm">
                  Carga Rapida Asistida (IA)
                </label>
                <AIAssistant onProductDetected={handleAIResult} />
             </div>
-          )}
+          )}*/}
 
           <form onSubmit={handleSubmitProduct} className="space-y-4">
             <div>
