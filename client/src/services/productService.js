@@ -21,10 +21,9 @@ export const createProduct = async (formData) => {
   const response = await fetch(`${API_URL}/productos`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}` 
     },
-    body: JSON.stringify(formData)
+    body: formData,
   });
   
   if (!response.ok) {
@@ -52,10 +51,9 @@ export const updateProduct = async (id, formData) => {
   const response = await fetch(`${API_URL}/productos/${id}`, {
     method: 'PUT',
     headers: {
-      'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify(formData),
+    body: formData,
   });
   
   if (!response.ok) throw new Error('Error al actualizar');

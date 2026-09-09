@@ -143,14 +143,23 @@ function Cargar() {
     if (!formData.categoria_id) {
       return toast.error("Debes seleccionar una categoria");
     }
-    
+
+    const data = new FormData();
+    data.append('nombre', formData.nombre);
+    data.append('descripcion', formData.descripcion);
+    data.append('precio_costo', formData.precio_costo);
+    data.append('precio_venta', formData.precio_venta);
+    data.append('stock', formData.stock);
+    data.append('categoria_id', formData.categoria_id);
+    if (formData.imagen) data.append('imagen', formData.imagen);
+
     try {
       if (isEditing) {
-        await updateProduct(id, formData);
+        await updateProduct(id, data);
         toast.success('Producto actualizado exitosamente');
         navigate('/'); 
       } else {
-        await createProduct(formData);
+        await createProduct(data);
         toast.success('Producto guardado exitosamente');
         setFormData({ nombre: '', descripcion: '', precio_costo: '', precio_venta: '', stock: '', categoria_id: '', imagen: null });
       }
