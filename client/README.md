@@ -2,10 +2,6 @@
 
 PERNSTORE es un sistema de Punto de Venta (POS) moderno, diseñado para gestionar de manera eficiente el inventario y las transacciones de ventas de un negocio. Este proyecto implementa una arquitectura robusta utilizando el stack PERN, con énfasis en la seguridad, la experiencia de usuario fluida y la integridad de los datos financieros.
 
-## 📸 Captura de Pantalla / Demo Visual
-
-*(Aquí te sugiero agregar una o dos GIFs o imágenes de tu sistema funcionando, especialmente de la vista de ventas y el carrito. Esto hace una gran diferencia en un portafolio).*
-
 ## 🚀 Características Técnicas Principales
 
 Este sistema fue construido siguiendo buenas prácticas de desarrollo web moderno:
