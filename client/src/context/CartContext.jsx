@@ -1,12 +1,36 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
 
 // Creamos el contexto
 export const CartContext = createContext();
 
+// Clave única con la que guardaremos en la memoria del navegador
+const STORAGE_KEY = 'pern_store_cart';
+
 // Creamos el Provider
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState([]);
+  // 1. Lazy Initialization: Leemos de localStorage una sola vez al cargar la app
+  const [cart, setCart] = useState(() => {
+    try {
+      const guardado = localStorage.getItem(STORAGE_KEY);
+      return guardado ? JSON.parse(guardado) : [];
+    } catch (error) {
+      console.error("Error al leer el carrito de localStorage:", error);
+      return [];
+    }
+  });
+
+  // 2. Efecto reactivo: Cada vez que 'cart' cambie, lo guardamos automáticamente
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
+    } catch (error) {
+      console.error("Error al guardar el carrito en localStorage:", error);
+    }
+  }, [cart]);
+
+  // Suma total de unidades en el carrito (para el badge del Navbar)
+  const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
 
   const addToCart = (producto) => {
     setCart((carritoActual) => {
@@ -44,6 +68,7 @@ export const CartProvider = ({ children }) => {
   return (
     <CartContext.Provider value={{ 
       cart, 
+      totalItems,
       addToCart, 
       removeFromCart, 
       decreaseQuantity, 
