@@ -34,43 +34,62 @@ const getAllVentas = async (_req, res) => {
   }
 };
 
-// 2. Procesar una venta compleja (Transacción)
+// 2. Procesar una venta compleja (Transacción atómica protegida contra concurrencia)
 const createVenta = async (req, res) => {
   const { total, items, usuario_id } = req.body; 
+
+  if (!items || items.length === 0) {
+    return res.status(400).json({ error: "El pedido no contiene productos." });
+  }
   
   // Reservamos un cliente dedicado del pool para esta transacción exclusiva
   const client = await pool.connect();
 
   try {
-    // INICIA LA TRANSACCIÓN: Todo lo que pase a partir de aquí es un paquete único
+    // INICIA LA TRANSACCIÓN
     await client.query('BEGIN'); 
 
     // Paso A: Insertar la cabecera en la tabla 'ventas' y obtener su ID
     const ventaResult = await client.query(
       'INSERT INTO ventas (usuario_id, total) VALUES ($1, $2) RETURNING id',
-      [usuario_id, total]
+      [usuario_id || null, total]
     );
     const ventaId = ventaResult.rows[0].id;
 
-    // Paso B: Recorrer el carrito de compras (items)
+    // Paso B: Recorrer el carrito de compras (items) y descontar stock atómicamente
     for (const item of items) {
       const subtotal = item.quantity * item.precio_venta;
 
-      // 1. Insertar la línea en 'detalle_ventas' (Congelando el precio histórico)
+      // 1. Descontar el stock físico protegiendo contra condiciones de carrera:
+      // Solo descuenta SI Y SOLO SI hay suficiente stock disponible (stock >= item.quantity)
+      const stockUpdateResult = await client.query(
+        `UPDATE productos 
+         SET stock = stock - $1 
+         WHERE id = $2 AND stock >= $1 
+         RETURNING stock, nombre`,
+        [item.quantity, item.id]
+      );
+
+      // Si rowCount === 0, significa que no cumplió 'stock >= quantity' (stock insuficiente o producto inactivo)
+      if (stockUpdateResult.rowCount === 0) {
+        // Consultamos el stock actual real para informarle al cajero con exactitud
+        const checkStock = await client.query('SELECT nombre, stock FROM productos WHERE id = $1', [item.id]);
+        const prod = checkStock.rows[0];
+        const stockActual = prod ? prod.stock : 0;
+        const nombreProd = prod ? prod.nombre : item.nombre || `ID #${item.id}`;
+
+        throw new Error(`Stock insuficiente para "${nombreProd}". Solicitaste: ${item.quantity}, disponibles en stock: ${stockActual}.`);
+      }
+
+      // 2. Insertar la línea en 'detalle_ventas' (Congelando el precio histórico)
       await client.query(
         `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_historico, subtotal) 
          VALUES ($1, $2, $3, $4, $5)`,
         [ventaId, item.id, item.quantity, item.precio_venta, subtotal]
       );
-
-      // 2. Restar el stock físico de la tabla 'productos'
-      await client.query(
-        'UPDATE productos SET stock = stock - $1 WHERE id = $2',
-        [item.quantity, item.id]
-      );
     }
 
-    // FINALIZA LA TRANSACCIÓN: Si el código llegó hasta aquí sin romperse, guardamos todo permanentemente
+    // FINALIZA LA TRANSACCIÓN: Todo fue consistente, guardamos los cambios de forma permanente
     await client.query('COMMIT'); 
     
     res.status(201).json({ 
@@ -79,13 +98,12 @@ const createVenta = async (req, res) => {
     });
 
   } catch (error) {
-    // CONTROL DE DAÑOS: Si hubo CUALQUIER error en el Paso A o B, deshacemos todo.
-    // Así evitamos cobrar dinero sin restar stock, o viceversa.
+    // CONTROL DE DAÑOS: Revertimos absolutamente todo si falló algún ítem
     await client.query('ROLLBACK'); 
-    console.error("Error crítico en createVenta (Transacción revertida):", error.message);
-    res.status(500).json({ error: 'Error crítico al procesar la venta. Se ha cancelado la operación.' });
+    console.error("Transacción revertida en createVenta:", error.message);
+    res.status(400).json({ error: error.message || 'Error crítico al procesar la venta.' });
   } finally {
-    // Siempre devolvemos el cliente al pool para que el servidor no se sature
+    // Siempre liberamos la conexión al pool
     client.release(); 
   }
 };

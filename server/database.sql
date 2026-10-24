@@ -17,7 +17,7 @@ CREATE TABLE productos (
     descripcion TEXT,
     precio_costo NUMERIC(10, 2) NOT NULL, 
     precio_venta NUMERIC(10, 2) NOT NULL,
-    stock INTEGER DEFAULT 0,
+    stock INTEGER DEFAULT 0 CHECK (stock >= 0),
     imagen_url TEXT,
     categoria_id INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
     activo BOOLEAN DEFAULT TRUE, 
@@ -39,3 +39,9 @@ CREATE TABLE detalle_ventas (
     precio_historico NUMERIC(10, 2) NOT NULL, 
     subtotal NUMERIC(10, 2) NOT NULL
 );
+
+-- ========================================================
+-- RESTRICCIONES Y MIGRACIONES PARA BASES DE DATOS ACTIVAS:
+-- (Si ya creaste tu base de datos previamente, ejecuta esto:)
+-- ========================================================
+-- ALTER TABLE productos ADD CONSTRAINT stock_no_negativo CHECK (stock >= 0);
