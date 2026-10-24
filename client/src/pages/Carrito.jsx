@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import TicketTermico from '../components/TicketTermico';
 
 function Carrito() {
   const { cart, removeFromCart, decreaseQuantity, clearCart } = useCart();
@@ -24,6 +25,7 @@ function Carrito() {
   const [metodoPago, setMetodoPago] = useState('efectivo'); // 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto'
   const [montoEfectivo, setMontoEfectivo] = useState('');
   const [procesando, setProcesando] = useState(false);
+  const [ventaParaImprimir, setVentaParaImprimir] = useState(null);
 
   // Estados específicos para pago mixto
   const [mixtoEfectivo, setMixtoEfectivo] = useState('');
@@ -112,8 +114,22 @@ function Carrito() {
         } else {
           toast.success("¡Venta registrada y cobrada con éxito!");
         }
+
+        // Preparamos el objeto para el comprobante térmico
+        const datosTicket = {
+          id: data.venta_id,
+          fecha: new Date().toISOString(),
+          vendedor: 'Mostrador',
+          total: totalGeneral,
+          metodo_pago: payloadPago.metodo_pago,
+          monto_recibido: payloadPago.monto_recibido,
+          vuelto: payloadPago.vuelto,
+          detalle_pago: payloadPago.detalle_pago,
+          items: [...cart]
+        };
+
+        setVentaParaImprimir(datosTicket);
         clearCart(); 
-        navigate('/historial'); 
       } else {
         toast.error("Error: " + (data.error || "No se pudo procesar"));
       }
@@ -496,6 +512,19 @@ function Carrito() {
 
           </div>
         </div>
+      )}
+
+      {/* ========================================================
+          COMPROBANTE / TICKET TÉRMICO (PUNTO 1)
+          ======================================================== */}
+      {ventaParaImprimir && (
+        <TicketTermico 
+          venta={ventaParaImprimir}
+          onClose={() => {
+            setVentaParaImprimir(null);
+            navigate('/historial');
+          }}
+        />
       )}
 
     </div>

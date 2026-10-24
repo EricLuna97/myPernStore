@@ -15,7 +15,6 @@ const getAllProductos = async (_req, res) => {
 const getProducto = async (req, res) => {
   const { id } = req.params;
   try {
-    // Nos aseguramos de que no puedan buscar un producto "borrado" directamente por ID
     const result = await pool.query('SELECT * FROM productos WHERE id = $1 AND activo = true', [id]);
     
     if (result.rows.length === 0) {
@@ -29,43 +28,42 @@ const getProducto = async (req, res) => {
   }
 };
 
-// 3. Crear producto (Estandarización financiera)
+// 3. Crear producto (con Código de Barras y Estandarización financiera)
 const createProducto = async (req, res) => {
-  // 1. Agregamos 'imagen' al destructuring de req.body
-  const { nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen } = req.body;
+  const { nombre, codigo_barras, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen } = req.body;
   
-  // 2. Evaluamos de dónde viene la imagen
   let imagen_url = null;
-  
   if (imagen) {
-    // Si viene la URL de Cloudinary como texto, la usamos directamente
     imagen_url = imagen; 
   } else if (req.file) {
-    // Si viene un archivo físico (método viejo), armamos la ruta local
     imagen_url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
   }
+
+  const cleanCodigo = codigo_barras && codigo_barras.trim() !== '' ? codigo_barras.trim() : null;
 
   try {
     const result = await pool.query(
       `INSERT INTO productos 
-      (nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url]
+      (nombre, codigo_barras, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [nombre, cleanCodigo, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("Error en createProducto:", error.message);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: `El código de barras "${cleanCodigo}" ya está asignado a otro producto.` });
+    }
     res.status(500).json({ error: "Error interno al registrar el producto" });
   }
 };
 
-// 4. Borrado Lógico (Auditoría y control de datos)
+// 4. Borrado Lógico
 const deleteProducto = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // NUNCA usamos DELETE FROM en una tabla transaccional. "Apagamos" el registro.
     const result = await pool.query(
       'UPDATE productos SET activo = false WHERE id = $1 RETURNING *', 
       [id]
@@ -85,50 +83,47 @@ const deleteProducto = async (req, res) => {
 // 5. Actualizar producto
 const updateProducto = async (req, res) => {
   const { id } = req.params;
+  const { nombre, codigo_barras, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen } = req.body;
   
-  // 1. Agregamos 'imagen' al destructuring del body
-  const { nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen } = req.body;
-  
-  // 2. Evaluamos si el frontend envió una nueva imagen
   let imagen_url = null;
   if (imagen) {
-    // Si viene la URL de Cloudinary
     imagen_url = imagen;
   } else if (req.file) {
-    // Fallback: si es un archivo local
     imagen_url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
   }
+
+  const cleanCodigo = codigo_barras && codigo_barras.trim() !== '' ? codigo_barras.trim() : null;
 
   try {
     let result;
     
-    // Verificamos que el producto exista y esté activo antes de actualizarlo
     const checkActive = await pool.query('SELECT activo FROM productos WHERE id = $1', [id]);
     if (checkActive.rowCount === 0 || !checkActive.rows[0].activo) {
       return res.status(404).json({ message: "No se puede editar un producto inactivo o inexistente" });
     }
 
-    // Si hay una nueva imagen_url, actualiza la base de datos incluyendo ese campo.
     if (imagen_url) {
       result = await pool.query(
         `UPDATE productos 
-        SET nombre=$1, descripcion=$2, precio_costo=$3, precio_venta=$4, stock=$5, categoria_id=$6, imagen_url=$7 
-        WHERE id=$8 RETURNING *`,
-        [nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url, id]
+        SET nombre=$1, codigo_barras=$2, descripcion=$3, precio_costo=$4, precio_venta=$5, stock=$6, categoria_id=$7, imagen_url=$8 
+        WHERE id=$9 RETURNING *`,
+        [nombre, cleanCodigo, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url, id]
       );
     } else {
-      // Si no enviaron foto nueva, actualiza todo excepto la imagen (conserva la que ya estaba)
       result = await pool.query(
         `UPDATE productos 
-        SET nombre=$1, descripcion=$2, precio_costo=$3, precio_venta=$4, stock=$5, categoria_id=$6 
-        WHERE id=$7 RETURNING *`,
-        [nombre, descripcion, precio_costo, precio_venta, stock, categoria_id, id]
+        SET nombre=$1, codigo_barras=$2, descripcion=$3, precio_costo=$4, precio_venta=$5, stock=$6, categoria_id=$7 
+        WHERE id=$8 RETURNING *`,
+        [nombre, cleanCodigo, descripcion, precio_costo, precio_venta, stock, categoria_id, id]
       );
     }
 
     res.json(result.rows[0]);
   } catch (error) {
     console.error("Error en updateProducto:", error.message);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: `El código de barras "${cleanCodigo}" ya está asignado a otro producto.` });
+    }
     res.status(500).json({ error: "Error interno al actualizar el producto" });
   }
 };

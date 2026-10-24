@@ -2,6 +2,7 @@ import AIAssistant from "../components/AIAssistant";
 import { useState, useEffect } from 'react';
 import { createProduct, updateProduct } from '../services/productService';
 import { getCategories } from '../services/categoryService';
+import { Barcode } from 'lucide-react';
 import './Formulario.css';
 
 function Formulario({ alCrear, productoExistente }) {
@@ -10,6 +11,8 @@ function Formulario({ alCrear, productoExistente }) {
   
   const [datos, setDatos] = useState({
     nombre: '',
+    codigo_barras: '',
+    descripcion: '',
     precio_costo: '',
     precio_venta: '',
     stock: '',
@@ -18,49 +21,50 @@ function Formulario({ alCrear, productoExistente }) {
 
   useEffect(() => {
     const cargarTodo = async () => {
-      const cats = await getCategories();
-      setListaCategorias(cats);
+      try {
+        const cats = await getCategories();
+        setListaCategorias(cats);
 
-      if (productoExistente) {
-        setDatos({
-          nombre: productoExistente.nombre,
-          precio: productoExistente.precio,
-          stock: productoExistente.stock,
-          categoria_id: productoExistente.categoria_id || '' 
-        });
+        if (productoExistente) {
+          setDatos({
+            nombre: productoExistente.nombre || '',
+            codigo_barras: productoExistente.codigo_barras || '',
+            descripcion: productoExistente.descripcion || '',
+            precio_costo: productoExistente.precio_costo || '',
+            precio_venta: productoExistente.precio_venta || '',
+            stock: productoExistente.stock ?? '',
+            categoria_id: productoExistente.categoria_id || '' 
+          });
+        }
+      } catch (err) {
+        console.error("Error al cargar categorías:", err);
       }
     };
     cargarTodo();
   }, [productoExistente]);
 
-  // --- NUEVA LÓGICA: MANEJO DE IA ---
   const handleAIResult = (productData) => {
     console.log("🤖 IA Respondió:", productData);
 
-    // Lógica inteligente para encontrar la categoría
-    // La IA nos da un texto (ej: "Bebidas"), pero necesitamos el ID (ej: 4)
     let categoriaEncontrada = '';
-    
     if (productData.category && listaCategorias.length > 0) {
       const match = listaCategorias.find(cat => 
-        // Comparamos ignorando mayúsculas/minúsculas
         cat.nombre.toLowerCase().includes(productData.category.toLowerCase()) ||
         productData.category.toLowerCase().includes(cat.nombre.toLowerCase())
       );
       if (match) categoriaEncontrada = match.id;
     }
 
-    // Actualizamos el estado del formulario con los datos de la IA
     setDatos(prev => ({
       ...prev,
       nombre: productData.name || prev.nombre,
-      precio: productData.price || prev.precio,
+      precio_costo: productData.costPrice || prev.precio_costo,
+      precio_venta: productData.price || prev.precio_venta,
       stock: productData.stock || prev.stock,
-      description: productData.description || prev.description, 
+      descripcion: productData.description || prev.descripcion, 
       categoria_id: categoriaEncontrada || prev.categoria_id
     }));
   };
-  // ------------------------------------
 
   const handleChange = (e) => {
     setDatos({ ...datos, [e.target.name]: e.target.value });
@@ -80,7 +84,10 @@ function Formulario({ alCrear, productoExistente }) {
 
     const formData = new FormData();
     formData.append('nombre', datos.nombre);
-    formData.append('precio', datos.precio);
+    formData.append('codigo_barras', datos.codigo_barras);
+    formData.append('descripcion', datos.descripcion);
+    formData.append('precio_costo', datos.precio_costo);
+    formData.append('precio_venta', datos.precio_venta);
     formData.append('stock', datos.stock);
     formData.append('categoria_id', datos.categoria_id);
     if (archivo) formData.append('imagen', archivo);
@@ -98,7 +105,7 @@ function Formulario({ alCrear, productoExistente }) {
       
     } catch (error) {
       console.error(error);
-      alert('Hubo un error al guardar');
+      alert('Error: ' + (error.message || 'Hubo un error al guardar'));
     }
   };
 
@@ -108,11 +115,11 @@ function Formulario({ alCrear, productoExistente }) {
         {productoExistente ? `Editar: ${productoExistente.nombre}` : 'Nuevo Producto'}
       </h2>
 
-        <div style={{ marginBottom: '20px', padding: '15px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-           <label style={{display: 'block', marginBottom: '10px', color: '#0369a1', fontWeight: 'bold'}}>✨ Autocompletar con IA</label>
-           <AIAssistant onProductDetected={handleAIResult} />
-        </div>
-      
+      <div style={{ marginBottom: '20px', padding: '15px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+        <label style={{display: 'block', marginBottom: '10px', color: '#0369a1', fontWeight: 'bold'}}>✨ Autocompletar con IA</label>
+        <AIAssistant onProductDetected={handleAIResult} />
+      </div>
+
       <label>Nombre del Producto:</label>
       <input 
         type="text" 
@@ -121,20 +128,34 @@ function Formulario({ alCrear, productoExistente }) {
         onChange={handleChange} 
         required 
       />
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Barcode style={{ width: '18px', height: '18px' }} />
+        Código de Barras (Opcional - Escanea con tu lector):
+      </label>
+      <input 
+        type="text" 
+        name="codigo_barras" 
+        placeholder="Ej: 7791234567890" 
+        value={datos.codigo_barras} 
+        onChange={handleChange} 
+      />
       
-      <label>precio_costo ($):</label>
+      <label>Precio Costo ($):</label>
       <input 
         type="number" 
-        name="precio costo" 
+        step="0.01"
+        name="precio_costo" 
         value={datos.precio_costo} 
         onChange={handleChange} 
         required 
       />
 
-      <label>precio_venta ($):</label>
+      <label>Precio Venta ($):</label>
       <input 
         type="number" 
-        name="precio venta" 
+        step="0.01"
+        name="precio_venta" 
         value={datos.precio_venta} 
         onChange={handleChange} 
         required 

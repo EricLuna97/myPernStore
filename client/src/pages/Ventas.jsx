@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Calendar, Receipt, Package, Banknote, CreditCard, ArrowLeftRight, Split, User } from "lucide-react";
+import { Calendar, Receipt, Package, Banknote, CreditCard, ArrowLeftRight, Split, User, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import TicketTermico from '../components/TicketTermico';
 
 function Ventas() {
   const [ventas, setVentas] = useState([]);
+  const [ticketSeleccionado, setTicketSeleccionado] = useState(null);
 
   useEffect(() => {
     const cargarVentas = async () => {
@@ -138,6 +141,16 @@ function Ventas() {
                     {(venta.metodo_pago === 'tarjeta' || venta.metodo_pago === 'transferencia') && (
                       <span>Pago digital directo por el total exacto.</span>
                     )}
+
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => setTicketSeleccionado(venta)}
+                      className="ml-auto flex items-center gap-1.5 text-xs h-7 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                      Reimprimir Ticket
+                    </Button>
                   </div>
                 </div>
 
@@ -182,6 +195,14 @@ function Ventas() {
             </AccordionItem>
           ))}
         </Accordion>
+      )}
+
+      {/* Modal de Comprobante / Ticket Térmico */}
+      {ticketSeleccionado && (
+        <TicketTermico 
+          venta={ticketSeleccionado}
+          onClose={() => setTicketSeleccionado(null)}
+        />
       )}
     </div>
   );
