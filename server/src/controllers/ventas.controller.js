@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-// 1. Obtener historial de ventas (Cabeceras + Detalles)
+// 1. Obtener historial de ventas (Cabeceras con Medios de Pago + Detalles)
 const getAllVentas = async (_req, res) => {
   try {
     const query = `
@@ -8,6 +8,10 @@ const getAllVentas = async (_req, res) => {
         v.id, 
         v.fecha, 
         v.total,
+        v.metodo_pago,
+        v.monto_recibido,
+        v.vuelto,
+        v.detalle_pago,
         u.nombre AS vendedor,
         json_agg(
           json_build_object(
@@ -22,7 +26,7 @@ const getAllVentas = async (_req, res) => {
       LEFT JOIN usuarios u ON v.usuario_id = u.id
       LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
       LEFT JOIN productos p ON dv.producto_id = p.id
-      GROUP BY v.id, v.fecha, v.total, u.nombre
+      GROUP BY v.id, v.fecha, v.total, v.metodo_pago, v.monto_recibido, v.vuelto, v.detalle_pago, u.nombre
       ORDER BY v.fecha DESC;
     `;
     
@@ -34,9 +38,17 @@ const getAllVentas = async (_req, res) => {
   }
 };
 
-// 2. Procesar una venta compleja (Transacción atómica protegida contra concurrencia)
+// 2. Procesar una venta compleja (Transacción atómica + Registro de Pago)
 const createVenta = async (req, res) => {
-  const { total, items, usuario_id } = req.body; 
+  const { 
+    total, 
+    items, 
+    usuario_id, 
+    metodo_pago = 'efectivo', 
+    monto_recibido = 0, 
+    vuelto = 0, 
+    detalle_pago = null 
+  } = req.body; 
 
   if (!items || items.length === 0) {
     return res.status(400).json({ error: "El pedido no contiene productos." });
@@ -49,10 +61,20 @@ const createVenta = async (req, res) => {
     // INICIA LA TRANSACCIÓN
     await client.query('BEGIN'); 
 
-    // Paso A: Insertar la cabecera en la tabla 'ventas' y obtener su ID
+    // Paso A: Insertar la cabecera en la tabla 'ventas' (incluyendo medio de pago y vuelto)
     const ventaResult = await client.query(
-      'INSERT INTO ventas (usuario_id, total) VALUES ($1, $2) RETURNING id',
-      [usuario_id || null, total]
+      `INSERT INTO ventas 
+       (usuario_id, total, metodo_pago, monto_recibido, vuelto, detalle_pago) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING id`,
+      [
+        usuario_id || null, 
+        total, 
+        metodo_pago, 
+        monto_recibido || total, 
+        vuelto || 0, 
+        detalle_pago ? JSON.stringify(detalle_pago) : null
+      ]
     );
     const ventaId = ventaResult.rows[0].id;
 
@@ -60,8 +82,7 @@ const createVenta = async (req, res) => {
     for (const item of items) {
       const subtotal = item.quantity * item.precio_venta;
 
-      // 1. Descontar el stock físico protegiendo contra condiciones de carrera:
-      // Solo descuenta SI Y SOLO SI hay suficiente stock disponible (stock >= item.quantity)
+      // 1. Descontar stock físico con protección contra condiciones de carrera
       const stockUpdateResult = await client.query(
         `UPDATE productos 
          SET stock = stock - $1 
@@ -70,9 +91,8 @@ const createVenta = async (req, res) => {
         [item.quantity, item.id]
       );
 
-      // Si rowCount === 0, significa que no cumplió 'stock >= quantity' (stock insuficiente o producto inactivo)
+      // Si rowCount === 0, significa que no alcanzó el stock
       if (stockUpdateResult.rowCount === 0) {
-        // Consultamos el stock actual real para informarle al cajero con exactitud
         const checkStock = await client.query('SELECT nombre, stock FROM productos WHERE id = $1', [item.id]);
         const prod = checkStock.rows[0];
         const stockActual = prod ? prod.stock : 0;
@@ -89,7 +109,7 @@ const createVenta = async (req, res) => {
       );
     }
 
-    // FINALIZA LA TRANSACCIÓN: Todo fue consistente, guardamos los cambios de forma permanente
+    // FINALIZA LA TRANSACCIÓN: Todo fue exitoso, confirmamos la operación
     await client.query('COMMIT'); 
     
     res.status(201).json({ 
@@ -98,7 +118,7 @@ const createVenta = async (req, res) => {
     });
 
   } catch (error) {
-    // CONTROL DE DAÑOS: Revertimos absolutamente todo si falló algún ítem
+    // CONTROL DE DAÑOS: Revertimos absolutamente todo ante cualquier fallo
     await client.query('ROLLBACK'); 
     console.error("Transacción revertida en createVenta:", error.message);
     res.status(400).json({ error: error.message || 'Error crítico al procesar la venta.' });

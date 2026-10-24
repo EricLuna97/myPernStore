@@ -28,7 +28,11 @@ CREATE TABLE ventas (
     id SERIAL PRIMARY KEY,
     usuario_id INTEGER REFERENCES usuarios(id),
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    total NUMERIC(10, 2) NOT NULL
+    total NUMERIC(10, 2) NOT NULL,
+    metodo_pago VARCHAR(50) DEFAULT 'efectivo',
+    monto_recibido NUMERIC(10, 2) DEFAULT 0,
+    vuelto NUMERIC(10, 2) DEFAULT 0,
+    detalle_pago JSONB
 );
 
 CREATE TABLE detalle_ventas (
@@ -41,7 +45,14 @@ CREATE TABLE detalle_ventas (
 );
 
 -- ========================================================
--- RESTRICCIONES Y MIGRACIONES PARA BASES DE DATOS ACTIVAS:
--- (Si ya creaste tu base de datos previamente, ejecuta esto:)
+-- MIGRACIONES PARA BASES DE DATOS ACTIVAS:
+-- (Si ya tienes tu base de datos creada, ejecuta estas sentencias en tu gestor SQL:)
 -- ========================================================
+-- 1. Evitar stock negativo (Punto 4):
 -- ALTER TABLE productos ADD CONSTRAINT stock_no_negativo CHECK (stock >= 0);
+
+-- 2. Registro de medios de pago y vuelto (Punto 3):
+-- ALTER TABLE ventas ADD COLUMN IF NOT EXISTS metodo_pago VARCHAR(50) DEFAULT 'efectivo';
+-- ALTER TABLE ventas ADD COLUMN IF NOT EXISTS monto_recibido NUMERIC(10, 2) DEFAULT 0;
+-- ALTER TABLE ventas ADD COLUMN IF NOT EXISTS vuelto NUMERIC(10, 2) DEFAULT 0;
+-- ALTER TABLE ventas ADD COLUMN IF NOT EXISTS detalle_pago JSONB;
