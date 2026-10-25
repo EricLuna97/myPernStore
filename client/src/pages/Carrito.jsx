@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TicketTermico from '../components/TicketTermico';
+import ModalPinAutorizacion from '../components/ModalPinAutorizacion';
 
 function Carrito() {
   const { cart, removeFromCart, decreaseQuantity, clearCart } = useCart();
@@ -27,11 +28,29 @@ function Carrito() {
   const [procesando, setProcesando] = useState(false);
   const [ventaParaImprimir, setVentaParaImprimir] = useState(null);
 
+  // Estado para autorización con PIN (Punto 2)
+  const [autorizacionPin, setAutorizacionPin] = useState(null); // { titulo, callback }
+
   // Estados específicos para pago mixto
   const [mixtoEfectivo, setMixtoEfectivo] = useState('');
   const [mixtoTarjeta, setMixtoTarjeta] = useState('');
 
   const totalGeneral = cart.reduce((acc, item) => acc + (parseFloat(item.precio_venta) * item.quantity), 0);
+
+  // Funciones de autorización por PIN
+  const pedirPinParaEliminarItem = (itemId, itemNombre) => {
+    setAutorizacionPin({
+      titulo: `Anular producto: "${itemNombre}"`,
+      callback: () => removeFromCart(itemId)
+    });
+  };
+
+  const pedirPinParaCancelarPedido = () => {
+    setAutorizacionPin({
+      titulo: 'Cancelar pedido completo',
+      callback: () => clearCart()
+    });
+  };
 
   // Abrir modal de cobro y preconfigurar valores
   const abrirModalCobro = () => {
@@ -206,8 +225,9 @@ function Carrito() {
                 <Button 
                   variant="destructive" 
                   size="sm" 
-                  onClick={() => removeFromCart(item.id)}
+                  onClick={() => pedirPinParaEliminarItem(item.id, item.nombre)}
                   className="h-8 w-8 p-0"
+                  title="Eliminar producto (Requiere PIN)"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -229,7 +249,7 @@ function Carrito() {
           
           <div className="flex gap-3 w-full sm:w-auto">
             <Button 
-              onClick={clearCart}
+              onClick={pedirPinParaCancelarPedido}
               variant="outline"
               className="flex-1 sm:flex-initial"
             >
@@ -524,6 +544,20 @@ function Carrito() {
             setVentaParaImprimir(null);
             navigate('/historial');
           }}
+        />
+      )}
+
+      {/* ========================================================
+          AUTORIZACIÓN EN SITIO / PIN DE SUPERVISOR (PUNTO 2)
+          ======================================================== */}
+      {autorizacionPin && (
+        <ModalPinAutorizacion
+          accionTitulo={autorizacionPin.titulo}
+          onAutorizado={() => {
+            autorizacionPin.callback();
+            setAutorizacionPin(null);
+          }}
+          onCancelar={() => setAutorizacionPin(null)}
         />
       )}
 

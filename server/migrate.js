@@ -28,12 +28,82 @@ async function ejecutarMigracion() {
     await pool.query(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS codigo_barras VARCHAR(100) UNIQUE;`);
     console.log('  ✓ [Punto 1] Columna codigo_barras agregada a productos.');
 
-    console.log('\n🚀 ¡Migraciones aplicadas con éxito en la base de datos PERNstore!');
+    // 4. Asegurar que la tabla usuarios tenga Primary Key / Unique en 'id'
+    // Esto resuelve el error "there is no unique constraint matching given keys for referenced table usuarios"
+    await pool.query(`
+      DO $$
+      BEGIN
+        -- Verificar si la columna id de usuarios tiene clave primaria
+        IF NOT EXISTS (
+          SELECT 1 
+          FROM pg_constraint c
+          JOIN pg_class t ON c.conrelid = t.oid
+          WHERE t.relname = 'usuarios' AND c.contype = 'p'
+        ) THEN
+          -- Si no tiene PK, se la asignamos a la columna 'id'
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'usuarios' AND column_name = 'id'
+          ) THEN
+            ALTER TABLE usuarios ADD PRIMARY KEY (id);
+          END IF;
+        END IF;
+      END $$;
+    `);
+
+    // 5. Columnas rol y pin en usuarios (Punto 2)
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(50) DEFAULT 'admin';`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pin VARCHAR(10) DEFAULT '1234';`);
+    await pool.query(`UPDATE usuarios SET pin = '1234' WHERE pin IS NULL;`);
+    console.log('  ✓ [Punto 2] Columnas rol y pin (PIN: 1234) aseguradas en usuarios.');
+
+    // 6. Tabla turnos_caja creada de forma segura
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS turnos_caja (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER,
+        fecha_apertura TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_cierre TIMESTAMP,
+        monto_inicial NUMERIC(10, 2) NOT NULL,
+        monto_ventas_efectivo NUMERIC(10, 2) DEFAULT 0,
+        monto_ventas_otros NUMERIC(10, 2) DEFAULT 0,
+        total_esperado NUMERIC(10, 2),
+        monto_real_cierre NUMERIC(10, 2),
+        diferencia NUMERIC(10, 2),
+        observaciones TEXT,
+        estado VARCHAR(20) DEFAULT 'abierto'
+      );
+    `);
+
+    // Vincular Foreign Key de usuario si existe la clave en usuarios
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_turnos_usuario'
+        ) THEN
+          -- Verificamos que 'usuarios' tenga clave primaria o única antes de crear la FK
+          IF EXISTS (
+            SELECT 1 FROM pg_constraint c
+            JOIN pg_class t ON c.conrelid = t.oid
+            WHERE t.relname = 'usuarios' AND c.contype IN ('p', 'u')
+          ) THEN
+            ALTER TABLE turnos_caja ADD CONSTRAINT fk_turnos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL;
+          END IF;
+        END IF;
+      END $$;
+    `);
+    console.log('  ✓ [Punto 2] Tabla turnos_caja creada y vinculada.');
+
+    // 7. Columna turno_id en ventas
+    await pool.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS turno_id INTEGER REFERENCES turnos_caja(id);`);
+    console.log('  ✓ [Punto 2] Columna turno_id vinculada a ventas.');
+
+    console.log('\n🚀 ¡Todas las migraciones fueron aplicadas con éxito en la base de datos PERNstore!');
   } catch (error) {
     if (error.code === 'ECONNREFUSED' || (error.errors && error.errors[0]?.code === 'ECONNREFUSED')) {
       console.error('\n⚠️  ERROR DE CONEXIÓN (ECONNREFUSED):');
       console.error('El servicio de PostgreSQL está apagado o no está escuchando en el puerto 5432.');
-      console.error('👉 Solución: Inicia el servicio de PostgreSQL en Windows (o abre pgAdmin / Docker) y vuelve a ejecutar este comando.');
     } else {
       console.error('\n❌ Error al aplicar las migraciones:', error.message || error);
     }

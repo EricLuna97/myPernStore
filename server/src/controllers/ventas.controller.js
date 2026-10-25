@@ -12,6 +12,7 @@ const getAllVentas = async (_req, res) => {
         v.monto_recibido,
         v.vuelto,
         v.detalle_pago,
+        v.turno_id,
         u.nombre AS vendedor,
         json_agg(
           json_build_object(
@@ -26,7 +27,7 @@ const getAllVentas = async (_req, res) => {
       LEFT JOIN usuarios u ON v.usuario_id = u.id
       LEFT JOIN detalle_ventas dv ON v.id = dv.venta_id
       LEFT JOIN productos p ON dv.producto_id = p.id
-      GROUP BY v.id, v.fecha, v.total, v.metodo_pago, v.monto_recibido, v.vuelto, v.detalle_pago, u.nombre
+      GROUP BY v.id, v.fecha, v.total, v.metodo_pago, v.monto_recibido, v.vuelto, v.detalle_pago, v.turno_id, u.nombre
       ORDER BY v.fecha DESC;
     `;
     
@@ -38,7 +39,7 @@ const getAllVentas = async (_req, res) => {
   }
 };
 
-// 2. Procesar una venta compleja (Transacción atómica + Registro de Pago)
+// 2. Procesar una venta compleja (Transacción atómica + Registro de Pago + Vinculación de Turno)
 const createVenta = async (req, res) => {
   const { 
     total, 
@@ -61,14 +62,21 @@ const createVenta = async (req, res) => {
     // INICIA LA TRANSACCIÓN
     await client.query('BEGIN'); 
 
-    // Paso A: Insertar la cabecera en la tabla 'ventas' (incluyendo medio de pago y vuelto)
+    // Paso A1: Verificar si hay un turno de caja abierto para asociarlo automáticamente
+    const turnoResult = await client.query(
+      "SELECT id FROM turnos_caja WHERE estado = 'abierto' ORDER BY id DESC LIMIT 1"
+    );
+    const turnoId = turnoResult.rows.length > 0 ? turnoResult.rows[0].id : null;
+
+    // Paso A2: Insertar la cabecera en la tabla 'ventas' (incluyendo turno_id, medio de pago y vuelto)
     const ventaResult = await client.query(
       `INSERT INTO ventas 
-       (usuario_id, total, metodo_pago, monto_recibido, vuelto, detalle_pago) 
-       VALUES ($1, $2, $3, $4, $5, $6) 
+       (usuario_id, turno_id, total, metodo_pago, monto_recibido, vuelto, detalle_pago) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
        RETURNING id`,
       [
         usuario_id || null, 
+        turnoId,
         total, 
         metodo_pago, 
         monto_recibido || total, 
@@ -114,7 +122,8 @@ const createVenta = async (req, res) => {
     
     res.status(201).json({ 
       message: 'Venta registrada, detalles guardados y stock actualizado con éxito',
-      venta_id: ventaId 
+      venta_id: ventaId,
+      turno_id: turnoId
     });
 
   } catch (error) {

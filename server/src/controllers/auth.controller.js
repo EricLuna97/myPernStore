@@ -19,8 +19,8 @@ const register = async (req, res) => {
     const passwordEncriptada = await bcrypt.hash(password, salt);
 
     const result = await pool.query(
-      'INSERT INTO usuarios (nombre, email, password) VALUES ($1, $2, $3) RETURNING id, nombre, email',
-      [nombre, email, passwordEncriptada]
+      'INSERT INTO usuarios (nombre, email, password, rol, pin) VALUES ($1, $2, $3, $4, $5) RETURNING id, nombre, email, rol',
+      [nombre, email, passwordEncriptada, 'cajero', '1234']
     );
 
     res.json(result.rows[0]);
@@ -59,7 +59,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email }, 
       secret, 
-      { expiresIn: '1h' } 
+      { expiresIn: '8h' } 
     );
 
     res.json({ 
@@ -67,7 +67,8 @@ const login = async (req, res) => {
       user: {
         id: usuario.id,
         nombre: usuario.nombre,
-        email: usuario.email
+        email: usuario.email,
+        rol: usuario.rol || 'cajero'
       }
     });
 
@@ -77,7 +78,37 @@ const login = async (req, res) => {
   }
 };
 
+// 3. Validación de PIN de Autorización en Sitio (Punto 2)
+const validarPin = async (req, res) => {
+  const { pin } = req.body;
+  if (!pin) {
+    return res.status(400).json({ error: "Debe ingresar el PIN de autorización." });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT id, nombre, email, rol FROM usuarios WHERE pin = $1",
+      [String(pin).trim()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ autorizado: false, error: "PIN incorrecto. Autorización denegada." });
+    }
+
+    const supervisor = result.rows[0];
+    res.json({
+      autorizado: true,
+      mensaje: `Acción autorizada por ${supervisor.nombre}`,
+      supervisor: supervisor.nombre
+    });
+  } catch (error) {
+    console.error("Error en validarPin:", error);
+    res.status(500).json({ error: "Error al verificar PIN de supervisor" });
+  }
+};
+
 module.exports = {
   register,
-  login
+  login,
+  validarPin
 };
