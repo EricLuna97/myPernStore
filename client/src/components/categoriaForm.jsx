@@ -13,6 +13,7 @@ function CategoriaForm() {
       alert(`Categoría "${nuevaCat.nombre}" creada con ID: ${nuevaCat.id}`);
       setNombre(''); // Limpiar campo
     } catch (error) {
+      console.error(error);
       alert('Error al crear categoría');
     }
   };

@@ -1,13 +1,24 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { createProduct, updateProduct, getProductById } from '../services/productService';
 import { getCategories, createCategory } from '../services/categoryService';
-import AIAssistant from '../components/AIAssistant';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Barcode } from "lucide-react";
+
+// Estado inicial limpio del formulario
+const ESTADO_INICIAL = {
+  nombre: '', 
+  codigo_barras: '',
+  descripcion: '', 
+  precio_costo: '', 
+  precio_venta: '', 
+  stock: '',
+  categoria_id: '', 
+  imagen: null
+};
 
 function Cargar() {
   const { id } = useParams(); 
@@ -16,35 +27,34 @@ function Cargar() {
 
   const [listaCategorias, setListaCategorias] = useState([]);
   const [newCat, setNewCat] = useState('');
+  const [formData, setFormData] = useState(ESTADO_INICIAL);
 
-  const [formData, setFormData] = useState({
-    nombre: '', 
-    codigo_barras: '',
-    descripcion: '', 
-    precio_costo: '', 
-    precio_venta: '', 
-    stock: '',
-    categoria_id: '', 
-    imagen: null
-  });
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const data = await getCategories();
-      setListaCategorias(data);
-    } catch (error) {
-      console.error(error);
-      toast.error("Error al cargar categorias");
-    }
-  }, []); 
-
+  // 1. Cargar categorías al montar el componente (patrón oficial de React para data fetching)
   useEffect(() => {
-    const initFetch = async () => {
-      await fetchCategories();
-    };
-    initFetch();
-  }, [fetchCategories]);
+    let cancelado = false;
 
+    const cargarCategorias = async () => {
+      try {
+        const data = await getCategories();
+        if (!cancelado) {
+          setListaCategorias(data);
+        }
+      } catch (error) {
+        if (!cancelado) {
+          console.error(error);
+          toast.error("Error al cargar categorias");
+        }
+      }
+    };
+
+    cargarCategorias();
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // 2. Carga del script de Cloudinary para fotos
   useEffect(() => {
     const existingScript = document.getElementById('cloudinary-widget-script');
     if (!existingScript) {
@@ -56,63 +66,42 @@ function Cargar() {
     }
   }, []);
 
+  // 3. Carga asíncrona de datos solo en modo edición
   useEffect(() => {
+    if (!isEditing) return;
+
+    let cancelado = false;
+
     const cargarDatosProducto = async () => {
       try {
         const producto = await getProductById(id);
-        setFormData({
-          nombre: producto.nombre || '',
-          codigo_barras: producto.codigo_barras || '',
-          descripcion: producto.descripcion || '',
-          precio_costo: producto.precio_costo || '',
-          precio_venta: producto.precio_venta || '',
-          stock: producto.stock ?? '',
-          categoria_id: producto.categoria_id || '',
-          imagen: producto.imagen_url || null
-        });
+        if (!cancelado) {
+          setFormData({
+            nombre: producto.nombre || '',
+            codigo_barras: producto.codigo_barras || '',
+            descripcion: producto.descripcion || '',
+            precio_costo: producto.precio_costo || '',
+            precio_venta: producto.precio_venta || '',
+            stock: producto.stock ?? '',
+            categoria_id: producto.categoria_id || '',
+            imagen: producto.imagen_url || null
+          });
+        }
       } catch (error) {
-        console.error(error);
-        toast.error("Error al cargar el producto");
-        navigate('/'); 
+        if (!cancelado) {
+          console.error(error);
+          toast.error("Error al cargar el producto");
+          navigate('/'); 
+        }
       }
     };
 
-    if (isEditing) {
-      cargarDatosProducto();
-    } else {
-      Promise.resolve().then(() => {
-        setFormData({
-          nombre: '', codigo_barras: '', descripcion: '', precio_costo: '', precio_venta: '', stock: '',
-          categoria_id: '', imagen: null
-        });
-      });
-    }
+    cargarDatosProducto();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id, isEditing, navigate]); 
-
-  const handleAIResult = useCallback((productData) => {
-    let categoriaEncontradaId = '';
-    
-    if (productData.category && listaCategorias.length > 0) {
-      const match = listaCategorias.find(cat => 
-        cat.nombre.toLowerCase().includes(productData.category.toLowerCase()) ||
-        productData.category.toLowerCase().includes(cat.nombre.toLowerCase())
-      );
-      if (match) categoriaEncontradaId = match.id;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      nombre: productData.name || prev.nombre,
-      precio_venta: productData.price || prev.precio_venta,
-      stock: productData.stock || prev.stock,
-      descripcion: productData.description || prev.descripcion,
-      categoria_id: categoriaEncontradaId || prev.categoria_id
-    }));
-
-    setTimeout(() => {
-      toast.success('Datos autocompletados con IA');
-    }, 100);
-  }, [listaCategorias]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -165,7 +154,7 @@ function Cargar() {
       } else {
         await createProduct(data);
         toast.success('Producto guardado exitosamente');
-        setFormData({ nombre: '', codigo_barras: '', descripcion: '', precio_costo: '', precio_venta: '', stock: '', categoria_id: '', imagen: null });
+        setFormData(ESTADO_INICIAL);
       }
     } catch (error) {
       toast.error(error.message || 'Error al guardar el producto');
@@ -178,7 +167,8 @@ function Cargar() {
       await createCategory(newCat);
       toast.success(`Categoria ${newCat} creada`);
       setNewCat(''); 
-      fetchCategories(); 
+      const dataActualizada = await getCategories();
+      setListaCategorias(dataActualizada);
     } catch (error) {
       toast.error(error.message || 'Error al crear la categoria');
     }
@@ -192,6 +182,20 @@ function Cargar() {
           <h1 className="text-2xl font-bold text-foreground mb-6">
             {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
           </h1>
+
+          {!isEditing && (
+            <div className="mb-6 p-4 bg-cyan-950/20 rounded-xl border border-cyan-800/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <span className="text-cyan-400 font-bold text-sm block">✨ ¿Recibiste mercadería o una factura impresa?</span>
+                <span className="text-xs text-muted-foreground">Sube la foto y carga decenas de productos automáticamente con Gemini Vision y fotos oficiales.</span>
+              </div>
+              <Link to="/carga-masiva">
+                <Button size="sm" className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold shrink-0">
+                  ⚡ Carga Masiva con IA
+                </Button>
+              </Link>
+            </div>
+          )}
 
           <form onSubmit={handleSubmitProduct} className="space-y-4">
             

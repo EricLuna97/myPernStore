@@ -1,9 +1,15 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Printer, X, Check } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 function TicketTermico({ venta, onClose, autoPrint = false }) {
   const ticketRef = useRef(null);
+
+  useEffect(() => {
+    if (autoPrint) {
+      window.print();
+    }
+  }, [autoPrint]);
 
   if (!venta) return null;
 

@@ -9,6 +9,7 @@ const productosRoutes = require('./src/routes/productos.routes');
 const categoriasRoutes = require('./src/routes/categorias.routes');
 const ventasRoutes = require('./src/routes/ventas.routes');
 const cajaRoutes = require('./src/routes/caja.routes');
+const aiRoutes = require('./src/routes/ai.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use('/api/productos', productosRoutes);
 app.use('/api/categorias', categoriasRoutes);
 app.use('/api/ventas', ventasRoutes);
 app.use('/api/caja', cajaRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Motor Lógico Activo y escuchando en el puerto ${PORT}`);

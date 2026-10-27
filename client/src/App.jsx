@@ -2,12 +2,12 @@ import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/NavBar';
 import Home from './pages/Home';
 import Cargar from './pages/Cargar';
+import CargaMasiva from './pages/CargaMasiva';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 import Carrito from './pages/Carrito';
 import Ventas from './pages/Ventas';
-import { Button } from "@/components/ui/button";
 
 function App() {
   return (
@@ -17,9 +17,9 @@ function App() {
         reverseOrder={false}
         toastOptions={{
           style: {
-            background: '#1a1a1a', // Fondo oscuro
-            color: '#fff',         // Texto blanco
-            border: '1px solid #00f3ff', // Borde Neón Cyan
+            background: '#1a1a1a',
+            color: '#fff',
+            border: '1px solid #00f3ff',
             padding: '16px',
             fontSize: '1rem',
           },
@@ -31,7 +31,7 @@ function App() {
           },
           error: {
             style: {
-              border: '1px solid #ff0055', // Borde Neón Rojo para errores
+              border: '1px solid #ff0055',
             },
             iconTheme: {
               primary: '#ff0055',
@@ -49,12 +49,12 @@ function App() {
           <Route path="/carrito" element={<ProtectedRoute><Carrito /></ProtectedRoute>}/>
           <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/cargar" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
+          <Route path="/carga-masiva" element={<ProtectedRoute><CargaMasiva /></ProtectedRoute>} />
           <Route path="/editar/:id" element={<ProtectedRoute><Cargar /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
         </Routes>
       </div>
     </>
-  
   );
 }
 

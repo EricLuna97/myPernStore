@@ -128,10 +128,121 @@ const updateProducto = async (req, res) => {
   }
 };
 
+// 6. Carga Masiva Inteligente (Batch Upsert con Transacciones)
+const cargaMasivaProductos = async (req, res) => {
+  const { productos } = req.body;
+
+  if (!Array.isArray(productos) || productos.length === 0) {
+    return res.status(400).json({ error: "La lista de productos para importar está vacía." });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    let insertados = 0;
+    let actualizados = 0;
+
+    for (const prod of productos) {
+      const {
+        nombre,
+        codigo_barras,
+        descripcion,
+        precio_costo,
+        precio_venta,
+        stock,
+        categoria_id,
+        imagen_url
+      } = prod;
+
+      const cleanCodigo = codigo_barras && String(codigo_barras).trim() !== '' ? String(codigo_barras).trim() : null;
+      const cantStock = parseInt(stock, 10) || 0;
+      const costo = parseFloat(precio_costo) || 0;
+      const venta = parseFloat(precio_venta) || 0;
+
+      // 1. Verificamos si ya existe por código de barras
+      let productoExistente = null;
+      if (cleanCodigo) {
+        const check = await client.query(
+          'SELECT id, stock, imagen_url FROM productos WHERE codigo_barras = $1',
+          [cleanCodigo]
+        );
+        if (check.rows.length > 0) {
+          productoExistente = check.rows[0];
+        }
+      }
+
+      if (productoExistente) {
+        // ACTUALIZAR (Upsert): Sumamos el nuevo stock recibido y actualizamos los costos/precios
+        await client.query(
+          `UPDATE productos 
+           SET 
+             nombre = COALESCE($1, nombre),
+             precio_costo = $2,
+             precio_venta = $3,
+             stock = stock + $4,
+             categoria_id = COALESCE($5, categoria_id),
+             imagen_url = COALESCE(imagen_url, $6),
+             descripcion = COALESCE($7, descripcion),
+             activo = true
+           WHERE id = $8`,
+          [
+            nombre,
+            costo,
+            venta,
+            cantStock,
+            categoria_id || null,
+            imagen_url || null,
+            descripcion || null,
+            productoExistente.id
+          ]
+        );
+        actualizados++;
+      } else {
+        // INSERTAR NUEVO
+        await client.query(
+          `INSERT INTO productos 
+           (nombre, codigo_barras, descripcion, precio_costo, precio_venta, stock, categoria_id, imagen_url) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            nombre,
+            cleanCodigo,
+            descripcion || null,
+            costo,
+            venta,
+            cantStock,
+            categoria_id || null,
+            imagen_url || null
+          ]
+        );
+        insertados++;
+      }
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: `¡Carga masiva completada exitosamente!`,
+      insertados,
+      actualizados,
+      total_procesados: insertados + actualizados
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error("Error en cargaMasivaProductos:", error);
+    res.status(500).json({ error: error.message || "Error al procesar la carga masiva en el servidor." });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getAllProductos,
   getProducto, 
   createProducto,
   deleteProducto,
-  updateProducto
+  updateProducto,
+  cargaMasivaProductos
 };

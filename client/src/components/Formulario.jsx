@@ -1,4 +1,3 @@
-import AIAssistant from "../components/AIAssistant"; 
 import { useState, useEffect } from 'react';
 import { createProduct, updateProduct } from '../services/productService';
 import { getCategories } from '../services/categoryService';
@@ -42,29 +41,6 @@ function Formulario({ alCrear, productoExistente }) {
     };
     cargarTodo();
   }, [productoExistente]);
-
-  const handleAIResult = (productData) => {
-    console.log("🤖 IA Respondió:", productData);
-
-    let categoriaEncontrada = '';
-    if (productData.category && listaCategorias.length > 0) {
-      const match = listaCategorias.find(cat => 
-        cat.nombre.toLowerCase().includes(productData.category.toLowerCase()) ||
-        productData.category.toLowerCase().includes(cat.nombre.toLowerCase())
-      );
-      if (match) categoriaEncontrada = match.id;
-    }
-
-    setDatos(prev => ({
-      ...prev,
-      nombre: productData.name || prev.nombre,
-      precio_costo: productData.costPrice || prev.precio_costo,
-      precio_venta: productData.price || prev.precio_venta,
-      stock: productData.stock || prev.stock,
-      descripcion: productData.description || prev.descripcion, 
-      categoria_id: categoriaEncontrada || prev.categoria_id
-    }));
-  };
 
   const handleChange = (e) => {
     setDatos({ ...datos, [e.target.name]: e.target.value });
@@ -114,11 +90,6 @@ function Formulario({ alCrear, productoExistente }) {
       <h2>
         {productoExistente ? `Editar: ${productoExistente.nombre}` : 'Nuevo Producto'}
       </h2>
-
-      <div style={{ marginBottom: '20px', padding: '15px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-        <label style={{display: 'block', marginBottom: '10px', color: '#0369a1', fontWeight: 'bold'}}>✨ Autocompletar con IA</label>
-        <AIAssistant onProductDetected={handleAIResult} />
-      </div>
 
       <label>Nombre del Producto:</label>
       <input 
