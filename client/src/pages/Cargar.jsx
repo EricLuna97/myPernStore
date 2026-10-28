@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Barcode } from "lucide-react";
+import { Astroid } from 'lucide-react';
 
 // Estado inicial limpio del formulario
 const ESTADO_INICIAL = {
@@ -186,14 +187,25 @@ function Cargar() {
           {!isEditing && (
             <div className="mb-6 p-4 bg-cyan-950/20 rounded-xl border border-cyan-800/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <span className="text-cyan-400 font-bold text-sm block">✨ ¿Recibiste mercadería o una factura impresa?</span>
-                <span className="text-xs text-muted-foreground">Sube la foto y carga decenas de productos automáticamente con Gemini Vision y fotos oficiales.</span>
+                <span className="text-xs text-muted-foreground">Sube imagen de factura o lista de productos.</span>
               </div>
               <Link to="/carga-masiva">
-                <Button size="sm" className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold shrink-0">
-                  ⚡ Carga Masiva con IA
-                </Button>
-              </Link>
+  <Button size="sm" className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold shrink-0 flex items-center gap-2">
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className="h-4 w-4"
+    >
+      <path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203" />
+    </svg>
+    Carga con IA
+  </Button>
+</Link>
             </div>
           )}
 

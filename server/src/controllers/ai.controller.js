@@ -1,7 +1,13 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
+const path = require('path');
+const XLSX = require('xlsx');
 
-// Función auxiliar para buscar foto en Open Food Facts por código de barras
+// =========================================================================
+// 1. HELPERS: BÚSQUEDA DE IMÁGENES Y LIMPIEZA DE DATOS
+// =========================================================================
+
+// Búsqueda de foto en Open Food Facts por código de barras
 const buscarFotoPorBarcode = async (barcode) => {
   if (!barcode || String(barcode).trim().length < 8) return null;
   
@@ -29,26 +35,193 @@ const buscarFotoPorBarcode = async (barcode) => {
       );
     }
   } catch (err) {
-    // Si la API pública no responde o da timeout, continuamos limpiamente
+    // Si la API pública no responde o da timeout, continuamos limpiamente sin foto
     return null;
   }
   return null;
 };
 
-// Controlador Principal: Analizar Factura con Gemini Vision
-const analizarFactura = async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Debes subir una imagen de la factura o lista de precios." });
+// Limpieza robusta de números (soporta formato con coma decimal o punto de miles ej: "1.250,50" o "1250.50")
+function limpiarNumero(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  
+  let str = String(val).trim().replace(/[^0-9.,-]/g, '');
+  if (!str) return 0;
+  
+  if (str.includes(',') && str.includes('.')) {
+    if (str.indexOf('.') < str.indexOf(',')) {
+      // Formato argentino/español: 1.500,50 -> 1500.50
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Formato anglosajón: 1,500.50 -> 1500.50
+      str = str.replace(/,/g, '');
+    }
+  } else if (str.includes(',')) {
+    // Solo coma decimal: 1500,50 -> 1500.50
+    str = str.replace(',', '.');
   }
+  
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
 
+// Búsqueda inteligente de valores en fila según lista de nombres posibles de columnas
+function encontrarValorEnFila(row, aliases) {
+  const keys = Object.keys(row);
+  
+  // 1. Coincidencia exacta insensible a mayúsculas
+  for (const alias of aliases) {
+    const keyMatch = keys.find(k => k.trim().toLowerCase() === alias.toLowerCase());
+    if (keyMatch && row[keyMatch] !== undefined && String(row[keyMatch]).trim() !== '') {
+      return row[keyMatch];
+    }
+  }
+  
+  // 2. Coincidencia parcial (por ejemplo "código de barras" contiene "codigo")
+  for (const alias of aliases) {
+    const keyMatch = keys.find(k => k.trim().toLowerCase().includes(alias.toLowerCase()));
+    if (keyMatch && row[keyMatch] !== undefined && String(row[keyMatch]).trim() !== '') {
+      return row[keyMatch];
+    }
+  }
+  
+  return null;
+}
+
+// Enriquecer lista de productos con fotos oficiales de Open Food Facts en bloques
+async function enriquecerProductosConFotos(productos) {
+  const resultado = [...productos];
+  const itemsConBarcode = resultado.filter(p => p.codigo_barras && String(p.codigo_barras).length >= 8);
+  
+  // Procesamos en bloques paralelos de 5 para no saturar la red ni demorar
+  const CHUNK_SIZE = 5;
+  for (let i = 0; i < itemsConBarcode.length; i += CHUNK_SIZE) {
+    const chunk = itemsConBarcode.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map(async (prod) => {
+        prod.imagen_url = await buscarFotoPorBarcode(prod.codigo_barras);
+      })
+    );
+  }
+  
+  return resultado;
+}
+
+// =========================================================================
+// 2. PROCESADOR DE ARCHIVOS TABULARES (EXCEL .XLSX, .XLS Y CSV)
+// =========================================================================
+const procesarArchivoTabular = async (req, res) => {
+  const filePath = req.file.path;
+  
+  try {
+    console.log(`📊 Procesando archivo tabular: ${req.file.originalname}`);
+    const workbook = XLSX.readFile(filePath, { cellDates: true });
+    
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      return res.status(422).json({ error: "El archivo no contiene hojas de datos legibles." });
+    }
+    
+    const primeraHoja = workbook.Sheets[workbook.SheetNames[0]];
+    const filas = XLSX.utils.sheet_to_json(primeraHoja, { defval: "" });
+    
+    if (!filas || filas.length === 0) {
+      return res.status(422).json({ 
+        error: "No se encontraron filas con datos en la planilla. Asegúrate de incluir los encabezados en la primera fila." 
+      });
+    }
+
+    // Aliases para detección automática de columnas
+    const aliasNombre = ['nombre', 'producto', 'articulo', 'item', 'descripcion', 'detalle', 'name', 'title', 'prod', 'mercaderia'];
+    const aliasBarcode = ['codigo_barras', 'codigo', 'cod_barra', 'cod_barras', 'barcode', 'ean', 'ean13', 'ean_13', 'upc', 'sku', 'code'];
+    const aliasDesc = ['descripcion', 'detalle', 'observaciones', 'description', 'info'];
+    const aliasCosto = ['precio_costo', 'costo', 'precio_compra', 'compra', 'pcosto', 'p_costo', 'costo_unitario', 'cost', 'cost_price'];
+    const aliasVenta = ['precio_venta', 'venta', 'pventa', 'p_venta', 'pvp', 'precio_publico', 'precio', 'price', 'sale_price'];
+    const aliasStock = ['stock', 'cantidad', 'cant', 'unidades', 'existencia', 'qty', 'quantity', 'unid', 'cant_ingreso'];
+    const aliasCat = ['categoria', 'rubro', 'seccion', 'familia', 'category', 'departamento', 'tipo'];
+
+    const productosExtraidos = [];
+
+    for (let i = 0; i < filas.length; i++) {
+      const fila = filas[i];
+      
+      const nombreRaw = encontrarValorEnFila(fila, aliasNombre);
+      // Si la fila está vacía o no tiene nombre reconocible, la omitimos
+      if (!nombreRaw || String(nombreRaw).trim() === '') continue;
+
+      let codigo_barras = encontrarValorEnFila(fila, aliasBarcode);
+      if (codigo_barras !== null && codigo_barras !== undefined) {
+        codigo_barras = String(codigo_barras).trim().replace(/[^0-9a-zA-Z_-]/g, '');
+        if (codigo_barras === '') codigo_barras = null;
+      }
+
+      const descripcion = encontrarValorEnFila(fila, aliasDesc) || '';
+      
+      let costo = limpiarNumero(encontrarValorEnFila(fila, aliasCosto));
+      let venta = limpiarNumero(encontrarValorEnFila(fila, aliasVenta));
+      
+      // Si no hay costo pero sí precio de venta, o viceversa
+      if (costo === 0 && venta > 0) {
+        costo = venta;
+      }
+      
+      let stock = Math.round(limpiarNumero(encontrarValorEnFila(fila, aliasStock)));
+      if (stock <= 0) stock = 1;
+
+      const categoria = encontrarValorEnFila(fila, aliasCat) || '';
+
+      productosExtraidos.push({
+        nombre: String(nombreRaw).trim(),
+        codigo_barras: codigo_barras || null,
+        descripcion: String(descripcion).trim(),
+        precio_costo: costo,
+        precio_venta: venta > 0 ? venta : null,
+        stock: stock,
+        categoria: String(categoria).trim(),
+        imagen_url: null
+      });
+    }
+
+    if (productosExtraidos.length === 0) {
+      return res.status(422).json({ 
+        error: "No se pudieron extraer productos. Verifica que la primera fila contenga títulos de columnas como: Nombre, Código, Costo, Stock, Categoría." 
+      });
+    }
+
+    console.log(`✅ Planilla leída: ${productosExtraidos.length} productos detectados. Buscando fotos oficiales...`);
+
+    // Enriquecer con Open Food Facts si hay códigos de barras
+    const productosFinales = await enriquecerProductosConFotos(productosExtraidos);
+
+    // Limpieza de archivo temporal
+    try { fs.unlinkSync(filePath); } catch (_) {}
+
+    return res.json({
+      tipo_origen: "tabular",
+      formato: path.extname(req.file.originalname).toLowerCase(),
+      total_detectados: productosFinales.length,
+      productos: productosFinales
+    });
+
+  } catch (error) {
+    console.error("💥 Error al procesar archivo tabular:", error);
+    try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (_) {}
+    return res.status(500).json({ error: error.message || "Error al leer el archivo Excel/CSV." });
+  }
+};
+
+// =========================================================================
+// 3. PROCESADOR DE FACTURAS E IMÁGENES CON GEMINI VISION
+// =========================================================================
+const procesarImagenConGemini = async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "Falta la variable de entorno GEMINI_API_KEY en el servidor." });
+    return res.status(500).json({ error: "Falta la variable de entorno GEMINI_API_KEY en el servidor para analizar imágenes." });
   }
 
+  const imagePath = req.file.path;
+
   try {
-    // 1. Leer el archivo local subido por Multer y convertirlo a Base64
-    const imagePath = req.file.path;
     const imageBuffer = fs.readFileSync(imagePath);
     const mimeType = req.file.mimetype || 'image/jpeg';
 
@@ -59,9 +232,7 @@ const analizarFactura = async (req, res) => {
       }
     };
 
-    // 2. Inicializar Gemini con salida JSON obligatoria
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Usamos el modelo rápido multimodal de última generación
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash",
       generationConfig: {
@@ -116,44 +287,55 @@ const analizarFactura = async (req, res) => {
 
     console.log(`✅ Gemini detectó ${productosExtraidos.length} productos. Buscando fotos oficiales...`);
 
-    // 3. Enriquecer productos: Buscar foto oficial en Open Food Facts si tienen código de barras
-    const productosConImagenes = await Promise.all(
-      productosExtraidos.map(async (prod) => {
-        let imagenEncontrada = null;
-        if (prod.codigo_barras) {
-          imagenEncontrada = await buscarFotoPorBarcode(prod.codigo_barras);
-        }
+    const normalizados = productosExtraidos.map(p => ({
+      ...p,
+      precio_costo: parseFloat(p.precio_costo) || 0,
+      stock: parseInt(p.stock, 10) || 1,
+      imagen_url: null
+    }));
 
-        return {
-          ...prod,
-          precio_costo: parseFloat(prod.precio_costo) || 0,
-          stock: parseInt(prod.stock, 10) || 1,
-          imagen_url: imagenEncontrada // URL oficial si se encontró, o null
-        };
-      })
-    );
+    const productosFinales = await enriquecerProductosConFotos(normalizados);
 
-    // 4. Limpieza del archivo temporal local para no saturar disco
-    try {
-      fs.unlinkSync(imagePath);
-    } catch (_) {}
+    try { fs.unlinkSync(imagePath); } catch (_) {}
 
-    res.json({
-      total_detectados: productosConImagenes.length,
-      productos: productosConImagenes
+    return res.json({
+      tipo_origen: "ia_vision",
+      total_detectados: productosFinales.length,
+      productos: productosFinales
     });
 
   } catch (error) {
-    console.error("💥 Error en analizarFactura:", error);
-    // Limpieza de emergencia
-    if (req.file?.path && fs.existsSync(req.file.path)) {
-      try { fs.unlinkSync(req.file.path); } catch (_) {}
-    }
-    res.status(500).json({ error: error.message || "Error procesando la imagen con IA." });
+    console.error("💥 Error en Gemini Vision:", error);
+    try { if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath); } catch (_) {}
+    return res.status(500).json({ error: error.message || "Error procesando la imagen con IA." });
+  }
+};
+
+// =========================================================================
+// 4. CONTROLADOR ENRUTADOR PRINCIPAL
+// =========================================================================
+const analizarFactura = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Debes subir un archivo (foto de factura, archivo Excel .xlsx o .csv)." });
+  }
+
+  const originalName = req.file.originalname || '';
+  const ext = path.extname(originalName).toLowerCase();
+  const mimetype = (req.file.mimetype || '').toLowerCase();
+
+  const esArchivoTabular = 
+    ['.xlsx', '.xls', '.csv'].includes(ext) ||
+    mimetype.includes('spreadsheet') ||
+    mimetype.includes('excel') ||
+    mimetype.includes('csv');
+
+  if (esArchivoTabular) {
+    return procesarArchivoTabular(req, res);
+  } else {
+    return procesarImagenConGemini(req, res);
   }
 };
 
 module.exports = {
   analizarFactura
 };
-

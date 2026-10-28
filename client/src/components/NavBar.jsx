@@ -68,8 +68,7 @@ function Navbar() {
 
             <li>
               <Link to="/carga-masiva" className="transition-colors text-cyan-400 font-semibold hover:text-cyan-300 flex items-center gap-1.5">
-                <span>Facturas IA</span>
-                <span className="text-[9px] bg-cyan-500/20 px-1.5 py-0.5 rounded text-cyan-400 border border-cyan-500/30">NUEVO</span>
+                <span>Carga con IA</span>
               </Link>
             </li>
           </ul>

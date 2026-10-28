@@ -5,12 +5,10 @@ import {
   Sparkles, 
   UploadCloud, 
   FileText, 
+  FileSpreadsheet, 
   Trash2, 
-  CheckCircle2, 
-  AlertCircle, 
   Percent, 
   Barcode, 
-  ImageIcon, 
   PackagePlus, 
   ArrowLeft 
 } from 'lucide-react';
@@ -35,23 +33,42 @@ function CargaMasiva() {
   const [paso, setPaso] = useState(1); // 1: Subida, 2: Revisión
 
   useEffect(() => {
+    let cancelado = false;
     const fetchCats = async () => {
       try {
         const cats = await getCategories();
-        setListaCategorias(cats);
+        if (!cancelado) {
+          setListaCategorias(cats);
+        }
       } catch (err) {
-        console.error("Error al cargar categorías:", err);
+        if (!cancelado) {
+          console.error("Error al cargar categorías:", err);
+        }
       }
     };
     fetchCats();
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setArchivo(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      // Generar preview solo si es una imagen
+      if (file.type.startsWith('image/')) {
+        setPreviewUrl(URL.createObjectURL(file));
+      } else {
+        setPreviewUrl(null);
+      }
     }
+  };
+
+  const handleRemoveFile = () => {
+    setArchivo(null);
+    setPreviewUrl(null);
   };
 
   // Función para asociar nombre de categoría extraído con el ID real de la base de datos
@@ -64,11 +81,13 @@ function CargaMasiva() {
     return match ? match.id : (listaCategorias[0]?.id || '');
   };
 
-  // Enviar imagen a Gemini Vision
-  const handleAnalizarFactura = async (e) => {
+
+
+  // Enviar archivo al backend (soporta imágenes para Gemini Vision, o Excel/CSV para SheetJS)
+  const handleProcesarArchivo = async (e) => {
     e.preventDefault();
     if (!archivo) {
-      toast.error("Por favor selecciona una imagen de la factura o lista");
+      toast.error("Por favor selecciona un archivo o foto de factura");
       return;
     }
 
@@ -78,7 +97,7 @@ function CargaMasiva() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/ai/analizar-factura', {
+      const res = await fetch('http://localhost:4000/api/ai/analizar-archivo', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -87,7 +106,7 @@ function CargaMasiva() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "No se pudo procesar la imagen.");
+        throw new Error(data.error || "No se pudo procesar el archivo.");
       }
 
       // Preparar productos con cálculo inicial de precio de venta y categoría mapeada
@@ -95,7 +114,11 @@ function CargaMasiva() {
 
       const productosListos = data.productos.map((p, index) => {
         const costo = parseFloat(p.precio_costo) || 0;
-        const ventaSugerida = Math.round(costo * factorMargen);
+        // Si el archivo ya traía un precio de venta definido lo respetamos, de lo contrario aplicamos el margen
+        const ventaSugerida = (p.precio_venta && p.precio_venta > 0)
+          ? parseFloat(p.precio_venta)
+          : Math.round(costo * factorMargen);
+
         const catId = encontrarCategoriaId(p.categoria);
 
         return {
@@ -114,11 +137,16 @@ function CargaMasiva() {
 
       setProductosDetectados(productosListos);
       setPaso(2);
-      toast.success(`✨ ¡Gemini identificó ${productosListos.length} productos con éxito!`);
+
+      if (data.tipo_origen === 'tabular') {
+        toast.success(`📊 ¡Se importaron ${productosListos.length} productos desde la planilla con éxito!`);
+      } else {
+        toast.success(`✨ ¡Gemini identificó ${productosListos.length} productos con éxito!`);
+      }
 
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Error al analizar la imagen con IA.");
+      toast.error(err.message || "Error al procesar el archivo.");
     } finally {
       setAnalizando(false);
     }
@@ -203,63 +231,132 @@ function CargaMasiva() {
   const totalUnidades = itemsSeleccionados.reduce((acc, p) => acc + (parseInt(p.stock, 10) || 0), 0);
   const costoTotalFactura = itemsSeleccionados.reduce((acc, p) => acc + ((parseFloat(p.precio_costo) || 0) * (parseInt(p.stock, 10) || 0)), 0);
 
+  // Detección de tipo de archivo para textos y etiquetas
+  const esExcel = archivo?.name?.match(/\.(xlsx|xls)$/i);
+  const esCsv = archivo?.name?.match(/\.csv$/i);
+  const esImagen = archivo?.type?.startsWith('image/');
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       
       {/* Cabecera Principal */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-card p-6 rounded-xl border border-border border-l-4 border-l-cyan-500 mb-8 gap-4 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="bg-cyan-500/20 text-cyan-400 font-bold px-2.5 py-0.5 rounded text-xs flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5" /> Gemini Vision + Open Food Facts
-            </span>
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            Ingreso de Mercadería y Facturas con IA
+            Ingreso Masivo de Productos
           </h1>
           <p className="text-muted-foreground text-sm">
-            Sube la foto de la factura, remito o lista de precios y la IA extraerá los datos y fotos oficiales automáticamente.
+            Sube una foto de tu factura/remito, o importa directamente listas de proveedores en Excel (.xlsx) o CSV.
           </p>
-        </div>
 
-        <Link to="/cargar">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" /> Carga Manual Individual
-          </Button>
-        </Link>
+          <Link to="/cargar">
+            <Button variant="outline" size="sm" className="flex items-center gap-2 text-xs">
+              <ArrowLeft className="h-3.5 w-3.5" /> Carga Individual
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* ================= PASO 1: SUBIDA DE FACTURA ================= */}
+      {/* ================= PASO 1: SUBIDA DE ARCHIVO ================= */}
       {paso === 1 && (
         <Card className="p-8 bg-card border-border max-w-2xl mx-auto shadow-md">
-          <form onSubmit={handleAnalizarFactura} className="space-y-6">
+          <form onSubmit={handleProcesarArchivo} className="space-y-6">
             
             {/* Zona Dropzone */}
             <div className="border-2 border-dashed border-border/80 hover:border-cyan-500/80 rounded-2xl p-8 text-center transition-colors bg-background/50">
               <input 
                 type="file" 
                 id="file-factura" 
-                accept="image/*" 
+                accept="image/*,.csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" 
                 onChange={handleFileChange} 
                 className="hidden" 
               />
-              <label htmlFor="file-factura" className="cursor-pointer block space-y-3">
-                <UploadCloud className="h-12 w-12 text-cyan-400 mx-auto" />
-                <h4 className="font-semibold text-foreground text-base">
-                  {archivo ? archivo.name : "Haz clic o arrastra la foto de la factura aquí"}
-                </h4>
-                <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                  Formatos soportados: JPG, PNG, WEBP. Asegúrate de que las columnas de productos y precios se vean legibles.
-                </p>
-              </label>
 
-              {previewUrl && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview factura" 
-                    className="max-h-60 mx-auto rounded-lg shadow border border-border object-contain"
-                  />
+              {!archivo ? (
+                <label htmlFor="file-factura" className="cursor-pointer block space-y-3">
+                  <div className="flex justify-center items-center gap-3 text-muted-foreground mb-1">
+                    <UploadCloud className="h-10 w-10 text-cyan-400" />
+                    <FileSpreadsheet className="h-10 w-10 text-emerald-400" />
+                  </div>
+                  <h4 className="font-semibold text-foreground text-base">
+                    Haz clic o arrastra tu archivo aquí
+                  </h4>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                    Formatos soportados: <strong>Imágenes</strong> (JPG, PNG, WEBP), <strong>Planillas Excel</strong> (.xlsx, .xls) o <strong>Archivos CSV</strong> (.csv).
+                  </p>
+                  <div className="pt-2 flex justify-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="px-2 py-0.5 rounded bg-muted/50 border border-border">Facturas / Fotos</span>
+                    <span className="px-2 py-0.5 rounded bg-muted/50 border border-border">Listas de Precios Excel</span>
+                    <span className="px-2 py-0.5 rounded bg-muted/50 border border-border">Dumps CSV</span>
+                  </div>
+                </label>
+              ) : (
+                <div className="space-y-4">
+                  {/* Previsualización según tipo de archivo */}
+                  {esImagen && previewUrl && (
+                    <div className="space-y-2">
+                      <span className="text-xs text-cyan-400 font-semibold block">Imagen de Factura Lista</span>
+                      <img 
+                        src={previewUrl} 
+                        alt="Preview factura" 
+                        className="max-h-60 mx-auto rounded-lg shadow border border-border object-contain"
+                      />
+                    </div>
+                  )}
+
+                  {esExcel && (
+                    <div className="p-4 bg-emerald-950/20 border border-emerald-800/40 rounded-xl flex items-center justify-between gap-4 text-left">
+                      <div className="flex items-center gap-3">
+                        <FileSpreadsheet className="h-10 w-10 text-emerald-400 shrink-0" />
+                        <div>
+                          <span className="text-xs font-bold text-emerald-400 block uppercase tracking-wider">Planilla Excel</span>
+                          <p className="text-sm font-semibold text-foreground truncate max-w-sm">{archivo.name}</p>
+                          <span className="text-xs text-muted-foreground">{(archivo.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFile} className="text-red-400 hover:text-red-300">
+                        Cambiar
+                      </Button>
+                    </div>
+                  )}
+
+                  {esCsv && (
+                    <div className="p-4 bg-amber-950/20 border border-amber-800/40 rounded-xl flex items-center justify-between gap-4 text-left">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-10 w-10 text-amber-400 shrink-0" />
+                        <div>
+                          <span className="text-xs font-bold text-amber-400 block uppercase tracking-wider">Archivo CSV</span>
+                          <p className="text-sm font-semibold text-foreground truncate max-w-sm">{archivo.name}</p>
+                          <span className="text-xs text-muted-foreground">{(archivo.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFile} className="text-red-400 hover:text-red-300">
+                        Cambiar
+                      </Button>
+                    </div>
+                  )}
+
+                  {(!esImagen && !esExcel && !esCsv) && (
+                    <div className="p-4 bg-muted/30 border border-border rounded-xl flex items-center justify-between gap-4 text-left">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-10 w-10 text-cyan-400 shrink-0" />
+                        <div>
+                          <span className="text-xs font-bold text-muted-foreground block uppercase">Archivo Seleccionado</span>
+                          <p className="text-sm font-semibold text-foreground truncate max-w-sm">{archivo.name}</p>
+                          <span className="text-xs text-muted-foreground">{(archivo.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFile} className="text-red-400 hover:text-red-300">
+                        Cambiar
+                      </Button>
+                    </div>
+                  )}
+
+                  <label htmlFor="file-factura" className="inline-block text-xs text-cyan-400 hover:underline cursor-pointer">
+                    Seleccionar otro archivo
+                  </label>
                 </div>
               )}
             </div>
@@ -269,10 +366,10 @@ function CargaMasiva() {
               <div>
                 <label className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                   <Percent className="h-4 w-4 text-cyan-400" />
-                  Margen de Ganancia Automático
+                  Margen de Ganancia Sugerido
                 </label>
                 <p className="text-xs text-muted-foreground">
-                  Calcula el precio de venta sugerido (Costo + %)
+                  Calcula el precio de venta cuando el archivo no especifica uno (Costo + %)
                 </p>
               </div>
 
@@ -297,12 +394,23 @@ function CargaMasiva() {
               {analizando ? (
                 <>
                   <Sparkles className="h-5 w-5 animate-spin" />
-                  Procesando factura con IA y buscando fotos...
+                  {esExcel || esCsv 
+                    ? "Leyendo planilla y buscando fotos de productos..." 
+                    : "Procesando factura con IA y buscando fotos..."}
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-5 w-5" />
-                  Analizar Factura con IA
+                  {esExcel || esCsv ? (
+                    <>
+                      <FileSpreadsheet className="h-5 w-5" />
+                      Importar Planilla ({esExcel ? 'Excel' : 'CSV'})
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      PROCESAR
+                    </>
+                  )}
                 </>
               )}
             </Button>
@@ -322,7 +430,7 @@ function CargaMasiva() {
                 size="sm" 
                 onClick={() => setPaso(1)}
               >
-                ← Subir Otra Imagen
+                ← Subir Otro Archivo
               </Button>
               <span className="text-sm font-medium text-muted-foreground">
                 <strong className="text-foreground">{itemsSeleccionados.length}</strong> de {productosDetectados.length} seleccionados
@@ -541,4 +649,3 @@ function CargaMasiva() {
 }
 
 export default CargaMasiva;
-
