@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config/api';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -97,7 +98,7 @@ function CargaMasiva() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/ai/analizar-archivo', {
+      const res = await fetch(`${API_BASE_URL}/ai/analizar-archivo`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -201,7 +202,7 @@ function CargaMasiva() {
     setGuardando(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/productos/carga-masiva', {
+      const res = await fetch(`${API_BASE_URL}/productos/carga-masiva`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

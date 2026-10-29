@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config/api';
 import { useEffect, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Calendar, Receipt, Package, Banknote, CreditCard, ArrowLeftRight, Split, User, Printer } from "lucide-react";
@@ -13,7 +14,7 @@ function Ventas() {
     const cargarVentas = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:4000/api/ventas', {
+        const res = await fetch(`${API_BASE_URL}/ventas`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

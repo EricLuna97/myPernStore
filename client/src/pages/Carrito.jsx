@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config/api';
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -115,7 +116,7 @@ function Carrito() {
         };
       }
 
-      const response = await fetch('http://localhost:4000/api/ventas', {
+      const response = await fetch(`${API_BASE_URL}/ventas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

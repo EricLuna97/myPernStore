@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config/api';
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Vault, 
@@ -32,7 +33,7 @@ function ModalControlCaja({ isOpen, onClose, onCajaActualizada }) {
     setCargando(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/caja/estado', {
+      const res = await fetch(`${API_BASE_URL}/caja/estado`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -66,7 +67,7 @@ function ModalControlCaja({ isOpen, onClose, onCajaActualizada }) {
     setProcesando(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/caja/abrir', {
+      const res = await fetch(`${API_BASE_URL}/caja/abrir`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -102,7 +103,7 @@ function ModalControlCaja({ isOpen, onClose, onCajaActualizada }) {
     setProcesando(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:4000/api/caja/cerrar', {
+      const res = await fetch(`${API_BASE_URL}/caja/cerrar`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

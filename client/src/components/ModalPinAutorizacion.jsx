@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config/api';
 import { useState } from 'react';
 import { ShieldAlert, X, Check, KeyRound } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ function ModalPinAutorizacion({ accionTitulo, onAutorizado, onCancelar }) {
 
     setVerificando(true);
     try {
-      const response = await fetch('http://localhost:4000/api/auth/validar-pin', {
+      const response = await fetch(`${API_BASE_URL}/auth/validar-pin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin: pin.trim() })
