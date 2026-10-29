@@ -1,12 +1,22 @@
 const API_URL = 'http://localhost:4000/api';
 
 export const createCategory = async (nombre) => {
+  const token = localStorage.getItem('token');
   try {
     const response = await fetch(`${API_URL}/categorias`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ nombre }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al crear la categoría');
+    }
+
     const data = await response.json();
     return data;
   } catch (error) {
@@ -14,6 +24,7 @@ export const createCategory = async (nombre) => {
     throw error;
   }
 };
+
 export const getCategories = async () => {
   try {
     const response = await fetch(`${API_URL}/categorias`);

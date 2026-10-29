@@ -4,10 +4,8 @@ const verifyToken = require('../middlewares/auth.middleware');
 
 const router = Router();
 
-// El prefijo '/api/ventas' ya viene delegado desde index.js
-router.get('/', getAllVentas);
-
-// Protegemos la ruta: solo un cajero/usuario autenticado puede registrar ventas
+// Protegemos ambas rutas: solo personal autenticado puede ver el historial y registrar ventas
+router.get('/', verifyToken, getAllVentas);
 router.post('/', verifyToken, createVenta);
 
 module.exports = router;

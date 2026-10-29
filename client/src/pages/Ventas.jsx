@@ -9,17 +9,23 @@ function Ventas() {
   const [ticketSeleccionado, setTicketSeleccionado] = useState(null);
 
   useEffect(() => {
+    let cancelado = false;
     const cargarVentas = async () => {
       try {
-        const res = await fetch('http://localhost:4000/api/ventas');
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:4000/api/ventas', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         const data = await res.json();
-        setVentas(data);
+        if (!cancelado) {
+          setVentas(Array.isArray(data) ? data : []);
+        }
       } catch (error) {
-        console.error("Error al cargar ventas:", error);
+        if (!cancelado) console.error("Error al cargar ventas:", error);
       }
     };
-
     cargarVentas();
+    return () => { cancelado = true; };
   }, []);
 
   const formatDate = (fechaString) => {

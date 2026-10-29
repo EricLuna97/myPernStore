@@ -29,18 +29,15 @@ async function ejecutarMigracion() {
     console.log('  ✓ [Punto 1] Columna codigo_barras agregada a productos.');
 
     // 4. Asegurar que la tabla usuarios tenga Primary Key / Unique en 'id'
-    // Esto resuelve el error "there is no unique constraint matching given keys for referenced table usuarios"
     await pool.query(`
       DO $$
       BEGIN
-        -- Verificar si la columna id de usuarios tiene clave primaria
         IF NOT EXISTS (
           SELECT 1 
           FROM pg_constraint c
           JOIN pg_class t ON c.conrelid = t.oid
           WHERE t.relname = 'usuarios' AND c.contype = 'p'
         ) THEN
-          -- Si no tiene PK, se la asignamos a la columna 'id'
           IF EXISTS (
             SELECT 1 FROM information_schema.columns 
             WHERE table_name = 'usuarios' AND column_name = 'id'
@@ -51,11 +48,13 @@ async function ejecutarMigracion() {
       END $$;
     `);
 
-    // 5. Columnas rol y pin en usuarios (Punto 2)
+    // 5. Columnas rol y pin en usuarios (Punto 2 y Seguridad RBAC)
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(50) DEFAULT 'admin';`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS pin VARCHAR(10) DEFAULT '1234';`);
     await pool.query(`UPDATE usuarios SET pin = '1234' WHERE pin IS NULL;`);
-    console.log('  ✓ [Punto 2] Columnas rol y pin (PIN: 1234) aseguradas en usuarios.');
+    // Asegurar que el usuario principal/dueño tenga rol admin
+    await pool.query(`UPDATE usuarios SET rol = 'admin' WHERE id = (SELECT MIN(id) FROM usuarios) AND (rol IS NULL OR rol = 'cajero');`);
+    console.log('  ✓ [Punto 2] Columnas rol y pin (PIN: 1234) aseguradas en usuarios y rol admin verificado.');
 
     // 6. Tabla turnos_caja creada de forma segura
     await pool.query(`
@@ -82,7 +81,6 @@ async function ejecutarMigracion() {
         IF NOT EXISTS (
           SELECT 1 FROM pg_constraint WHERE conname = 'fk_turnos_usuario'
         ) THEN
-          -- Verificamos que 'usuarios' tenga clave primaria o única antes de crear la FK
           IF EXISTS (
             SELECT 1 FROM pg_constraint c
             JOIN pg_class t ON c.conrelid = t.oid
